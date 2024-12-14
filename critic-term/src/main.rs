@@ -1,4 +1,8 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
+
+use critic::prelude::*;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -10,8 +14,8 @@ struct Cli {
 #[derive(Parser, Debug)]
 struct AddCommand {
     /// Primary Category
-    #[arg(short, long)]
-    category: String,
+    #[arg(index = 1)]
+    category_db: PathBuf,
     /// Name of the entry
     #[arg(short, long)]
     name: String,
@@ -27,9 +31,13 @@ struct AddCommand {
 
 #[derive(Parser, Debug)]
 struct RateCommand {
-    /// Primary Category
+    /// Primary Category to rate
     #[arg(short, long)]
-    category: String,
+    category: PathBuf,
+
+    /// Debug settings
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    debug: u8,
 }
 
 #[derive(Subcommand, Debug)]
@@ -44,12 +52,12 @@ fn main() {
 
     match &cli.command {
         Commands::Add(AddCommand {
-            category,
+            category_db,
             name,
             sub_categories,
             debug,
         }) => {
-            println!("{}", category);
+            println!("{:?}", category_db);
             println!("{}", name);
             for i in sub_categories.iter().filter(|x| !x.is_empty()) {
                 println!("Subcategory: {}", i);
@@ -60,8 +68,20 @@ fn main() {
                 2 => println!("Debug mode is on"),
                 _ => println!("Don't be crazy"),
             }
+
+            let item = CategoryItem {
+                name: name.to_string(),
+                sub_categories: sub_categories.to_vec(),
+            };
+
+            let mut conn =
+                Connection::open_category(category_db).expect("Expected Category DB to be opened");
+
+            let _ = conn.save(&item).expect("Expected item to be saved");
         }
-        Commands::Rate(RateCommand { category: _ }) => {
-        }
+        Commands::Rate(RateCommand {
+            category: _,
+            debug: _,
+        }) => {}
     }
 }

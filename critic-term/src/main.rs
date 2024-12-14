@@ -1,6 +1,10 @@
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand};
+use crossterm::{
+    cursor,
+    event::{self, poll},
+    terminal, ExecutableCommand,
+};
+use std::{io, path::PathBuf, time::Duration};
 
 use critic::prelude::*;
 
@@ -32,8 +36,8 @@ struct AddCommand {
 #[derive(Parser, Debug)]
 struct RateCommand {
     /// Primary Category to rate
-    #[arg(short, long)]
-    category: PathBuf,
+    #[arg(index = 1)]
+    category_db: PathBuf,
 
     /// Debug settings
     #[arg(short, long, action = clap::ArgAction::Count)]
@@ -47,7 +51,7 @@ enum Commands {
     Rate(RateCommand),
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -69,7 +73,7 @@ fn main() {
                 _ => println!("Don't be crazy"),
             }
 
-            let item = CategoryItem {
+            let item = NewCategoryItem {
                 name: name.to_string(),
                 sub_categories: sub_categories.to_vec(),
             };
@@ -80,8 +84,71 @@ fn main() {
             let _ = conn.save(&item).expect("Expected item to be saved");
         }
         Commands::Rate(RateCommand {
-            category: _,
+            category_db,
             debug: _,
-        }) => {}
+        }) => {
+            let conn =
+                Connection::open_category(category_db).expect("Expected Category DB to be opened");
+
+            'contest: loop {
+                if let Ok(contest) = conn.next_contest() {
+                    use io::Write;
+                    let mut stdout = io::stdout();
+
+                    stdout.execute(terminal::Clear(terminal::ClearType::All))?;
+                    stdout.execute(cursor::MoveTo(0, 0))?;
+
+                    println!(r#"Criterion: "{}""#, contest.category.name);
+                    println!("1. {}", contest.a.name);
+                    println!("2. {}", contest.b.name);
+
+                    print!("Which is better? (1/2/(s)kip/(q)quit): ");
+
+                    stdout.flush()?;
+                    'evt: loop {
+                        if poll(Duration::from_millis(100))? {
+                            match event::read() {
+                                Ok(event::Event::Key(evt)) => match evt.code {
+                                    event::KeyCode::Char('1') => {
+                                        println!("Is 1 really better than 2?");
+                                        break 'contest;
+                                    }
+                                    event::KeyCode::Char('2') => {
+                                        println!("Is 2 really better than 1?");
+                                        break 'contest;
+                                    }
+                                    event::KeyCode::Char('s') => {
+                                        println!("Moving On...");
+                                        break 'evt;
+                                    }
+                                    event::KeyCode::Char('q') => {
+                                        break 'contest;
+                                    }
+                                    _ => {
+                                        stdout
+                                            .execute(terminal::Clear(terminal::ClearType::All))?;
+                                        stdout.execute(cursor::MoveTo(0, 0))?;
+
+                                        println!(r#"Criterion: "{}""#, contest.category.name);
+                                        println!("1. {}", contest.a.name);
+                                        println!("2. {}", contest.b.name);
+
+                                        print!("Which is better? (1/2/(s)kip/(q)quit): ");
+
+                                        stdout.flush()?;
+                                    }
+                                },
+                                _ => {
+                                    println!("Unexpected event");
+                                    break 'contest;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    Ok(())
 }

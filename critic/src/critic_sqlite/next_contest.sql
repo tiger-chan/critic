@@ -10,7 +10,8 @@ unevaluated_pairs AS (
         ec1.entry_id AS entry1_id,
         ec2.entry_id AS entry2_id,
         ABS(e1.elo - e2.elo) AS elo_distance,
-        rc.criterion_id
+        rc.criterion_id,
+        RANDOM() as rng
     FROM entry_criteria ec1
     JOIN entry_criteria ec2 
         ON ec1.criterion_id = ec2.criterion_id AND ec1.entry_id < ec2.entry_id
@@ -29,7 +30,7 @@ next_comparison AS (
         entry2_id, 
         criterion_id
     FROM unevaluated_pairs
-    ORDER BY elo_distance ASC
+    ORDER BY elo_distance ASC, rng ASC
     LIMIT 1
 )
 SELECT 

@@ -11,11 +11,27 @@ impl DbConnection for Connection {
     fn open_category<T: AsRef<std::path::Path>>(path: T) -> Result<Self, DbError> {
         let conn = Connection::open(path.as_ref()).map_err(DbError::Sqlite)?;
 
-        let init = conn
+        let conn = conn
             .execute_batch(include_str!("create.sql"))
+            .map_err(DbError::Sqlite)
+            .map(|_| conn)?;
+
+        let count = conn
+            .query_row("SELECT COUNT(1) FROM entries", params![], |x| {
+                let y: i32 = x.get(0)?;
+                Ok(y)
+            })
             .map_err(DbError::Sqlite);
 
-        init.map(|_| conn)
+        if let Ok(count) = count {
+            if count == 0 {
+                println!("Zero count");
+                conn.execute_batch(include_str!("seed.sql"))
+                    .map_err(DbError::Sqlite)?;
+            }
+        }
+
+        Ok(conn)
     }
 
     fn save<T: Record<Self>>(&mut self, record: &T) -> Result<usize, DbError> {
@@ -75,13 +91,22 @@ impl Record<Connection> for NewCategoryItem {
             let mut ins_sc_stmt = tx
                 .prepare(include_str!("ins_criterion.sql"))
                 .expect("Failed to prepare statement");
+
+            let mut ins_default_stmt = tx
+                .prepare(include_str!("ins_entry_criterion_default.sql"))
+                .expect("Failed to prepare statement");
+
             let mut ins_sub_stmt = tx
                 .prepare(include_str!("ins_entry_criterion.sql"))
                 .expect("Failed to prepare statement");
 
             ins_stmt
                 .execute(params![self.name])
-                .map_err(|x| DbError::Sqlite(x))?;
+                .map_err(DbError::Sqlite)?;
+
+            ins_default_stmt
+                .execute(params![self.name])
+                .map_err(DbError::Sqlite)?;
 
             for sc in self.sub_categories.iter().filter(|x| !x.is_empty()) {
                 ins_sc_stmt.execute(params![sc]).map_err(DbError::Sqlite)?;

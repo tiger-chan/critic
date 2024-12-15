@@ -1,0 +1,2 @@
+INSERT INTO criteria (value)
+VALUES(?1) ON CONFLICT DO NOTHING;

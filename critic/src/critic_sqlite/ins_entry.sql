@@ -1,0 +1,2 @@
+INSERT INTO entries (name)
+VALUES (?1) ON CONFLICT DO NOTHING

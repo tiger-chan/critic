@@ -1,50 +1,67 @@
 BEGIN;
 INSERT INTO entries (name)
 VALUES
-("Legend of Zelda"),
-("Legend of Zelda 2: The Adventure of Link"),
-("Legend of Zelda: A Link to the Past"),
-("Legend of Zelda: Link's Awakening"),
-("Legend of Zelda: Ocarina of Time"),
-("Legend of Zelda: Majora's Mask"),
-("Legend of Zelda: Oracle of Seasons"),
-("Legend of Zelda: Oracle of Ages"),
-("Legend of Zelda: Four Swords"),
-("Legend of Zelda: The Wind Waker"),
-("Legend of Zelda: The Minish Cap"),
-("Legend of Zelda: Twilight Princess"),
-("Legend of Zelda: Phantom Hourglass"),
-("Legend of Zelda: Spirit Tracks"),
-("Legend of Zelda: Skyward Sword"),
-("Legend of Zelda: A Link Between Worlds"),
-("Legend of Zelda: Breath of the Wild"),
-("Legend of Zelda: Tears of the Kingdom"),
-("Legend of Zelda: Echoes of Wisdom");
-
+("Legend of Zelda"), -- 1
+("Legend of Zelda 2: The Adventure of Link"), -- 1
+("Legend of Zelda: A Link to the Past"), -- 3
+("Legend of Zelda: Link's Awakening"), -- 4
+("Legend of Zelda: Ocarina of Time"), -- 5
+("Legend of Zelda: Majora's Mask"), -- 6
+("Legend of Zelda: Oracle of Seasons"), -- 7
+("Legend of Zelda: Oracle of Ages"), -- 8
+("Legend of Zelda: Four Swords"), -- 9
+("Legend of Zelda: The Wind Waker"), -- 10
+("Legend of Zelda: The Minish Cap"), -- 11
+("Legend of Zelda: Twilight Princess"), -- 12
+("Legend of Zelda: Phantom Hourglass"), -- 13
+("Legend of Zelda: Spirit Tracks"), -- 14
+("Legend of Zelda: Skyward Sword"), -- 15
+("Legend of Zelda: A Link Between Worlds"), -- 16
+("Legend of Zelda: Breath of the Wild"), -- 17
+("Legend of Zelda: Tears of the Kingdom"), -- 18
+("Legend of Zelda: Echoes of Wisdom"), -- 19
+("Final Fantasy"), -- 20
+("Final Fantasy II"), -- 21
+("Final Fantasy III"), -- 22
+("Final Fantasy IV"), -- 23
+("Final Fantasy V"), -- 24
+("Final Fantasy VI"), -- 25
+("Final Fantasy VII"), -- 26
+("Final Fantasy VIII"), -- 27
+("Final Fantasy IX"), -- 28
+("Final Fantasy X"), -- 29
+("Final Fantasy XI"), -- 30
+("Final Fantasy XII"), -- 31
+("Final Fantasy XIII"), -- 32
+("Final Fantasy XIV"), -- 33
+("Final Fantasy XV"), -- 34
+("Final Fantasy XVI"); -- 35
 
 INSERT INTO criteria (value)
 VALUES
-("gameplay"),
-("replability"),
-("difficulty"),
-("story"),
-("world-building"),
-("writing/voice-acting"),
-("graphics"),
-("art-style"),
-("ux"),
-("sound-effects"),
-("music"),
-("action-adventure"),
-("arpg"),
-("open-world"),
-("platformer");
+("gameplay"), -- 1 
+("replability"), -- 2
+("difficulty"), -- 3
+("story"), -- 4
+("world-building"), -- 5
+("writing/voice-acting"), -- 6
+("graphics"), -- 7
+("art-style"), -- 8
+("ux"), -- 9
+("sound-effects"), -- 10
+("music"), -- 11
+("action-adventure"), -- 12
+("arpg"), -- 13
+("open-world"), -- 14
+("platformer"), -- 15
+("jrpg"), -- 16
+("mmo"); -- 17
 
 -- Insert universal criteria for all games.
 WITH RECURSIVE game_ids(game_id) AS (
     SELECT 1
     UNION ALL
-    SELECT game_id + 1 FROM game_ids WHERE game_id < 18
+    SELECT game_id + 1 FROM game_ids WHERE game_id < 36
 )
 INSERT INTO entry_criteria (entry_id, criterion_id)
 SELECT game_id, criterion_id
@@ -142,5 +159,28 @@ INSERT OR IGNORE INTO entry_criteria (entry_id, criterion_id) VALUES
 -- Legend of Zelda: Tears of the Kingdom (Action-Adventure, Open-World)
 (18, 12), -- action-adventure
 (18, 13), -- arpg
-(18, 14); -- open-world
+(18, 14), -- open-world
+
+-- Legend of Zelda: Echoes of Wisdom
+(19, 12), -- action-adventure
+(19, 13); -- arpg
+
+
+WITH RECURSIVE game_ids(game_id) AS (
+    SELECT (SELECT id FROM entries WHERE name = "Final Fantasy")
+    UNION ALL
+    SELECT game_id + 1 FROM game_ids WHERE game_id < 36
+)
+INSERT INTO entry_criteria (entry_id, criterion_id)
+SELECT game_id, criterion_id
+FROM game_ids
+CROSS JOIN (
+    SELECT 16 AS criterion_id UNION ALL -- jrpg
+) AS criteria;
+
+INSERT OR IGNORE INTO entry_criteria (entry_id, criterion_id) VALUES
+(30, 17),
+(33, 17);
+
+
 COMMIT;

@@ -1,6 +1,7 @@
 pub struct MatchResult {
-    pub category: i32,
-    pub winner: i32,
-    pub loser: i32,
-    pub elo_change: i32,
+    pub criterion: i32,
+    pub a: i32,
+    pub b: i32,
+    pub score: f32,
+    pub elo_change: (f32, f32),
 }

@@ -7,11 +7,13 @@ use crate::{
 
 pub use rusqlite::Connection;
 
+use super::seed::{DEFAULT_CRITERIA, ENTRIES};
+
 impl DbConnection for Connection {
     fn open_category<T: AsRef<std::path::Path>>(path: T) -> Result<Self, DbError> {
         let conn = Connection::open(path.as_ref()).map_err(DbError::Sqlite)?;
 
-        let conn = conn
+        let mut conn = conn
             .execute_batch(include_str!("create.sql"))
             .map_err(DbError::Sqlite)
             .map(|_| conn)?;
@@ -25,9 +27,54 @@ impl DbConnection for Connection {
 
         if let Ok(count) = count {
             if count == 0 {
-                println!("Zero count");
-                conn.execute_batch(include_str!("seed.sql"))
-                    .map_err(DbError::Sqlite)?;
+                let tx = conn
+                    .transaction()
+                    .expect("Save transaction could not be started");
+
+                {
+                    let mut ins_stmt = tx
+                        .prepare(include_str!("ins_entry.sql"))
+                        .expect("Failed to prepare statement");
+
+                    let mut ins_criteria_stmt = tx
+                        .prepare(include_str!("ins_criterion.sql"))
+                        .expect("Failed to prepare statement");
+
+                    let mut ins_default_stmt = tx
+                        .prepare(include_str!("ins_entry_criterion_default.sql"))
+                        .expect("Failed to prepare statement");
+
+                    let mut ins_sub_stmt = tx
+                        .prepare(include_str!("ins_entry_criterion.sql"))
+                        .expect("Failed to prepare statement");
+
+                    for criterion in DEFAULT_CRITERIA {
+                        ins_criteria_stmt
+                            .execute(params![criterion])
+                            .map_err(DbError::Sqlite)?;
+                    }
+
+                    for entry in ENTRIES {
+                        ins_stmt
+                            .execute(params![entry.name])
+                            .map_err(DbError::Sqlite)?;
+
+                        ins_default_stmt
+                            .execute(params![entry.name])
+                            .map_err(DbError::Sqlite)?;
+
+                        for sc in entry.criteria {
+                            ins_criteria_stmt
+                                .execute(params![sc])
+                                .map_err(DbError::Sqlite)?;
+
+                            ins_sub_stmt
+                                .execute(params![entry.name, sc])
+                                .map_err(DbError::Sqlite)?;
+                        }
+                    }
+                }
+                tx.commit().map_err(DbError::Sqlite)?;
             }
         }
 
@@ -48,11 +95,11 @@ impl CriticData for Connection {
         stmt.query_row(params![], |r| {
             let a_id: i32 = r.get(0)?;
             let a_name: String = r.get(1)?;
-            let a_elo: i32 = r.get(2)?;
+            let a_elo: f32 = r.get(2)?;
 
             let b_id: i32 = r.get(3)?;
             let b_name: String = r.get(4)?;
-            let b_elo: i32 = r.get(5)?;
+            let b_elo: f32 = r.get(5)?;
 
             let cat_id: i32 = r.get(6)?;
             let cat_name: String = r.get(7)?;
@@ -132,14 +179,28 @@ impl Record<Connection> for MatchResult {
                 .prepare(include_str!("add_contest_result.sql"))
                 .expect("Failed to prepare statement");
 
+            let mut update_stmt = tx
+                .prepare(include_str!("update_elo.sql"))
+                .expect("Failed to prepare statement");
+
             ins_stmt
                 .execute(params![
-                    self.category,
-                    self.winner,
-                    self.loser,
-                    self.elo_change
+                    self.criterion,
+                    self.a,
+                    self.b,
+                    self.score,
+                    self.elo_change.0,
+                    self.elo_change.1,
                 ])
-                .map_err(|x| DbError::Sqlite(x))?;
+                .map_err(DbError::Sqlite)?;
+
+            update_stmt
+                .execute(params![self.a, self.elo_change.0])
+                .map_err(DbError::Sqlite)?;
+
+            update_stmt
+                .execute(params![self.b, self.elo_change.1])
+                .map_err(DbError::Sqlite)?;
         }
 
         tx.commit().map_err(DbError::Sqlite).map(|_| 1)

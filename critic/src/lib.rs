@@ -1,12 +1,25 @@
 #[cfg(feature = "rusqlite")]
 pub mod critic_sqlite;
 pub mod dto;
+pub mod elo;
+mod seed;
 
 #[derive(Debug)]
 pub enum DbError {
     #[cfg(feature = "rusqlite")]
     Sqlite(rusqlite::Error),
 }
+
+impl std::fmt::Display for DbError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            #[cfg(feature = "rusqlite")]
+            DbError::Sqlite(err) => err.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for DbError {}
 
 pub trait Record<T> {
     fn save(&self, connection: &mut T) -> Result<usize, DbError>;

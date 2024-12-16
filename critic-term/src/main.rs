@@ -51,7 +51,22 @@ enum Commands {
     Rate(RateCommand),
 }
 
-fn main() -> std::io::Result<()> {
+fn save_match(
+    conn: &mut Connection,
+    contest: &critic::dto::Contest,
+    score: f32,
+) -> Result<(), critic::DbError> {
+    let result = critic::dto::MatchResult {
+        score,
+        a: contest.a.id,
+        b: contest.b.id,
+        criterion: contest.category.id,
+        elo_change: critic::elo::calc_change(contest.a.elo, contest.b.elo, score),
+    };
+    conn.save(&result).map(|_| ())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -87,61 +102,69 @@ fn main() -> std::io::Result<()> {
             category_db,
             debug: _,
         }) => {
-            let conn =
+            let mut conn =
                 Connection::open_category(category_db).expect("Expected Category DB to be opened");
 
+            let mut show_help = false;
+            let mut contest = conn.next_contest()?;
             'contest: loop {
-                if let Ok(contest) = conn.next_contest() {
-                    use io::Write;
-                    let mut stdout = io::stdout();
+                use io::Write;
+                let mut stdout = io::stdout();
 
-                    stdout.execute(terminal::Clear(terminal::ClearType::All))?;
-                    stdout.execute(cursor::MoveTo(0, 0))?;
+                stdout.execute(terminal::Clear(terminal::ClearType::All))?;
+                stdout.execute(cursor::MoveTo(0, 0))?;
 
-                    println!(r#"Criterion: "{}""#, contest.category.name);
-                    println!("1. {}", contest.a.name);
-                    println!("2. {}", contest.b.name);
+                println!(r#"Criterion: "{}""#, contest.category.name);
+                println!("1. {}", contest.a.name);
+                println!("2. {}", contest.b.name);
 
-                    print!("Which is better? (1/2/(s)kip/(q)quit): ");
+                if show_help {
+                    println!("----------------------");
+                    println!("e. Equal");
+                    println!("s. Skip for now");
+                    println!("q. Quit");
+                    println!("?. Display this help");
+                    show_help = false;
+                }
 
-                    stdout.flush()?;
-                    'evt: loop {
-                        if poll(Duration::from_millis(100))? {
-                            match event::read() {
-                                Ok(event::Event::Key(evt)) => match evt.code {
-                                    event::KeyCode::Char('1') => {
-                                        println!("Is 1 really better than 2?");
-                                        break 'contest;
-                                    }
-                                    event::KeyCode::Char('2') => {
-                                        println!("Is 2 really better than 1?");
-                                        break 'contest;
-                                    }
-                                    event::KeyCode::Char('s') => {
-                                        println!("Moving On...");
-                                        break 'evt;
-                                    }
-                                    event::KeyCode::Char('q') => {
-                                        break 'contest;
-                                    }
-                                    _ => {
-                                        stdout
-                                            .execute(terminal::Clear(terminal::ClearType::All))?;
-                                        stdout.execute(cursor::MoveTo(0, 0))?;
+                print!("Which is better? (1/2/e/s/q/?): ");
 
-                                        println!(r#"Criterion: "{}""#, contest.category.name);
-                                        println!("1. {}", contest.a.name);
-                                        println!("2. {}", contest.b.name);
-
-                                        print!("Which is better? (1/2/(s)kip/(q)quit): ");
-
-                                        stdout.flush()?;
-                                    }
-                                },
-                                _ => {
-                                    println!("Unexpected event");
+                stdout.flush()?;
+                'evt: loop {
+                    if poll(Duration::from_millis(100))? {
+                        match event::read() {
+                            Ok(event::Event::Key(evt)) => match evt.code {
+                                event::KeyCode::Char('1') => {
+                                    save_match(&mut conn, &contest, 1.0)?;
+                                    contest = conn.next_contest()?;
+                                    break 'evt;
+                                }
+                                event::KeyCode::Char('2') => {
+                                    save_match(&mut conn, &contest, 0.0)?;
+                                    contest = conn.next_contest()?;
+                                    break 'evt;
+                                }
+                                event::KeyCode::Char('e') => {
+                                    save_match(&mut conn, &contest, 0.5)?;
+                                    contest = conn.next_contest()?;
+                                    break 'evt;
+                                }
+                                event::KeyCode::Char('s') => {
+                                    contest = conn.next_contest()?;
+                                    break 'evt;
+                                }
+                                event::KeyCode::Char('q') => {
                                     break 'contest;
                                 }
+                                event::KeyCode::Char('?') => {
+                                    show_help = true;
+                                    break 'evt;
+                                }
+                                _ => {}
+                            },
+                            _ => {
+                                println!("Unexpected event");
+                                break 'contest;
                             }
                         }
                     }

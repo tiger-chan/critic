@@ -42,4 +42,43 @@ impl CriticData for Connection {
         })
         .map_err(DbError::Sqlite)
     }
+
+    fn top(
+        &self,
+        criteria_group: &str,
+        count: usize,
+        page: usize,
+    ) -> Result<Vec<dto::TopRow>, DbError> {
+        let mut stmt = self
+            .prepare(include_str!("top_criteria.sql"))
+            .expect("Failed to prepare statement");
+
+        let first = page * count;
+        let last = (page + 1) * count;
+
+        let params = if criteria_group.is_empty() {
+            params![rusqlite::types::Null, first, last]
+        } else {
+            params![criteria_group, first, last]
+        };
+
+        let row_iter = stmt
+            .query_map(params, |r| {
+                let elo: f32 = r.get(2)?;
+                let elo = elo as i32;
+                Ok(dto::TopRow {
+                    group: r.get(0)?,
+                    entry: r.get(1)?,
+                    elo,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
 }

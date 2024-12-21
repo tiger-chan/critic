@@ -27,10 +27,27 @@ struct AddCommand {
     /// List of groupings of criteria to add.
     #[arg(short, long, value_parser, num_args = 0.., value_delimiter=',')]
     criteria_group: Vec<String>,
-
     // /// Debug settings
     // #[arg(short, long, action = clap::ArgAction::Count)]
     // debug: u8,
+}
+
+#[derive(Parser, Debug)]
+struct TopCommand {
+    /// Primary Category to rate
+    #[arg(index = 1)]
+    category_db: PathBuf,
+
+    #[arg(short, long, default_value = "")]
+    group: String,
+
+    /// Number of entries to display
+    #[arg(short, long, default_value = "30")]
+    count: u8,
+
+    /// Number of entries to display
+    #[arg(short, long, default_value = "0")]
+    page: u8,
 }
 
 #[derive(Parser, Debug)]
@@ -38,7 +55,6 @@ struct RateCommand {
     /// Primary Category to rate
     #[arg(index = 1)]
     category_db: PathBuf,
-
     // /// Debug settings
     // #[arg(short, long, action = clap::ArgAction::Count)]
     // debug: u8,
@@ -48,6 +64,7 @@ struct RateCommand {
 enum Commands {
     // Adds an entry to category
     Add(AddCommand),
+    Top(TopCommand),
     Rate(RateCommand),
 }
 
@@ -92,9 +109,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let _ = conn.save(&item).expect("Expected item to be saved");
         }
-        Commands::Rate(RateCommand {
+        Commands::Top(TopCommand {
             category_db,
+            group,
+            count,
+            page,
         }) => {
+            let conn =
+                Connection::open_category(category_db).expect("Expected Category DB to be opened");
+
+            let rows = conn.top(group.as_str(), *count as usize, *page as usize)?;
+
+            println!("'{}', c: {}, p:{} Rows found: {}", group, count, page, rows.len());
+            for row in rows {
+                println!(
+                    "Group: {}, Entry: {}, ELO: {}",
+                    row.group, row.entry, row.elo
+                );
+            }
+        }
+        Commands::Rate(RateCommand { category_db }) => {
             let mut conn =
                 Connection::open_category(category_db).expect("Expected Category DB to be opened");
 
@@ -107,7 +141,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stdout.execute(terminal::Clear(terminal::ClearType::All))?;
                 stdout.execute(cursor::MoveTo(0, 0))?;
 
-                println!(r#"Criterion: {}: "{}""#, contest.criterion.group_name, contest.criterion.name);
+                println!(
+                    r#"Criterion: {}: "{}""#,
+                    contest.criterion.group_name, contest.criterion.name
+                );
                 println!("1. {}", contest.a.name);
                 println!("2. {}", contest.b.name);
 

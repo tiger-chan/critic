@@ -32,6 +32,7 @@ pub trait DbConnection: Sized {
 
 pub trait CriticData {
     fn next_contest(&self) -> Result<dto::Contest, DbError>;
+    fn top(&self, criteria_group: &str, count: usize, page: usize) -> Result<Vec<dto::TopRow>, DbError>;
 }
 
 pub mod prelude {

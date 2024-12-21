@@ -24,13 +24,13 @@ struct AddCommand {
     #[arg(short, long)]
     name: String,
 
-    /// List of sub-categories
+    /// List of groupings of criteria to add.
     #[arg(short, long, value_parser, num_args = 0.., value_delimiter=',')]
-    sub_categories: Vec<String>,
+    criteria_group: Vec<String>,
 
-    /// Debug settings
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
+    // /// Debug settings
+    // #[arg(short, long, action = clap::ArgAction::Count)]
+    // debug: u8,
 }
 
 #[derive(Parser, Debug)]
@@ -39,9 +39,9 @@ struct RateCommand {
     #[arg(index = 1)]
     category_db: PathBuf,
 
-    /// Debug settings
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
+    // /// Debug settings
+    // #[arg(short, long, action = clap::ArgAction::Count)]
+    // debug: u8,
 }
 
 #[derive(Subcommand, Debug)]
@@ -58,9 +58,10 @@ fn save_match(
 ) -> Result<(), critic::DbError> {
     let result = critic::dto::MatchResult {
         score,
+        criteria_group: contest.criterion.group,
         a: contest.a.id,
         b: contest.b.id,
-        criterion: contest.category.id,
+        criterion: contest.criterion.id,
         elo_change: critic::elo::calc_change(contest.a.elo, contest.b.elo, score),
     };
     conn.save(&result).map(|_| ())
@@ -73,24 +74,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Add(AddCommand {
             category_db,
             name,
-            sub_categories,
-            debug,
+            criteria_group,
         }) => {
             println!("{:?}", category_db);
             println!("{}", name);
-            for i in sub_categories.iter().filter(|x| !x.is_empty()) {
+            for i in criteria_group.iter().filter(|x| !x.is_empty()) {
                 println!("Subcategory: {}", i);
-            }
-            match debug {
-                0 => println!("Debug mode is off"),
-                1 => println!("Debug mode is kind of on"),
-                2 => println!("Debug mode is on"),
-                _ => println!("Don't be crazy"),
             }
 
             let item = NewCategoryItem {
                 name: name.to_string(),
-                sub_categories: sub_categories.to_vec(),
+                sub_categories: criteria_group.to_vec(),
             };
 
             let mut conn =
@@ -100,7 +94,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Rate(RateCommand {
             category_db,
-            debug: _,
         }) => {
             let mut conn =
                 Connection::open_category(category_db).expect("Expected Category DB to be opened");
@@ -114,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stdout.execute(terminal::Clear(terminal::ClearType::All))?;
                 stdout.execute(cursor::MoveTo(0, 0))?;
 
-                println!(r#"Criterion: "{}""#, contest.category.name);
+                println!(r#"Criterion: {}: "{}""#, contest.criterion.group_name, contest.criterion.name);
                 println!("1. {}", contest.a.name);
                 println!("2. {}", contest.b.name);
 

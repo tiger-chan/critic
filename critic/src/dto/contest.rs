@@ -1,4 +1,4 @@
-use super::Category;
+use super::Criterion;
 
 pub struct Contestant {
     pub id: i32,
@@ -7,7 +7,7 @@ pub struct Contestant {
 }
 
 pub struct Contest {
-    pub category: Category,
+    pub criterion: Criterion,
     pub a: Contestant,
     pub b: Contestant,
 }

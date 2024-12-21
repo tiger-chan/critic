@@ -1,1 +1,1 @@
-UPDATE entries SET elo = elo + ?2 WHERE id = ?1
+UPDATE entry_criteria SET elo = elo + ?3 WHERE id = ?1 AND group_id = ?2

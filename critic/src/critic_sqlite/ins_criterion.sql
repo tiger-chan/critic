@@ -1,2 +1,2 @@
-INSERT INTO criteria (value)
-VALUES(?1) ON CONFLICT DO NOTHING;
+INSERT INTO criteria (group_id, value)
+VALUES(?1, ?2) ON CONFLICT DO NOTHING;

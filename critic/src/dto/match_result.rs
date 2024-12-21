@@ -1,4 +1,5 @@
 pub struct MatchResult {
+    pub criteria_group: i32,
     pub criterion: i32,
     pub a: i32,
     pub b: i32,

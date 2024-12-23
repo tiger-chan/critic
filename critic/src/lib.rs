@@ -32,14 +32,23 @@ pub trait DbConnection: Sized {
 
 pub trait CriticData {
     fn next_contest(&self) -> Result<dto::Contest, DbError>;
-    fn top(&self, criteria_group: &str, count: usize, page: usize) -> Result<Vec<dto::TopRow>, DbError>;
+    fn top(
+        &self,
+        criteria_group: &str,
+        count: usize,
+        page: usize,
+    ) -> Result<Vec<dto::TopRow>, DbError>;
+    fn all_groups(&self) -> Result<Vec<dto::CriteriaGroup>, DbError>;
+    fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError>;
 }
 
 pub mod prelude {
     #[cfg(feature = "rusqlite")]
     pub use crate::critic_sqlite::Connection;
     pub use crate::{
-        dto::{CategoryItem, MatchResult, NewCategoryItem},
+        dto::{
+            CategoryItem, CriteriaGroup, CriteriaGroupItem, Criterion, MatchResult, NewCategoryItem,
+        },
         CriticData, DbConnection, DbError, Record,
     };
 }

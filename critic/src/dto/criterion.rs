@@ -1,3 +1,4 @@
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
 pub struct Criterion {
     pub group: i32,
     pub id: i32,

@@ -81,4 +81,48 @@ impl CriticData for Connection {
 
         Ok(results)
     }
+
+    fn all_groups(&self) -> Result<Vec<dto::CriteriaGroup>, DbError> {
+        let mut stmt = self
+            .prepare(include_str!("all_groups.sql"))
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![], |r| {
+                Ok(dto::CriteriaGroup {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError> {
+        let mut stmt = self
+            .prepare(include_str!("find_criteria.sql"))
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![id], |r| {
+                Ok(dto::CriteriaGroupItem {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
 }

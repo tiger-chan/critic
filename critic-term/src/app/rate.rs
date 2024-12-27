@@ -174,7 +174,7 @@ impl AppTab for RateWidget {
         );
     }
 
-    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
+    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         match evt.code {
             KeyCode::Up => {
                 self.selected = Selected::Skip;
@@ -206,6 +206,6 @@ impl AppTab for RateWidget {
             _ => {}
         }
 
-        Ok(())
+        Ok(false)
     }
 }

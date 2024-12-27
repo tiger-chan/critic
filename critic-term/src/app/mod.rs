@@ -48,7 +48,7 @@ impl ActiveScreen {
 
 pub(super) trait AppTab: std::fmt::Debug {
     fn render(&self, area: Rect, frame: &mut Frame);
-    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<(), Box<dyn std::error::Error>>;
+    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>>;
 }
 
 #[derive(Debug)]
@@ -97,25 +97,26 @@ impl App {
     }
 
     fn handle_key_event(&mut self, evt: KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
-        match (evt.code, evt.modifiers) {
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => self.exit(),
-            (KeyCode::Char('q'), _) => self.exit(),
-            (KeyCode::Char('1'), _) => {
-                if self.tab.0 != ActiveScreen::Rate {
-                    self.tab = ActiveScreen::rate(self.db.clone());
+        if !(self.tab.1.handle_key_events(&evt)?) {
+            match (evt.code, evt.modifiers) {
+                (KeyCode::Char('c'), KeyModifiers::CONTROL) => self.exit(),
+                (KeyCode::Char('q'), _) => self.exit(),
+                (KeyCode::Char('1'), _) => {
+                    if self.tab.0 != ActiveScreen::Rate {
+                        self.tab = ActiveScreen::rate(self.db.clone());
+                    }
                 }
-            }
-            (KeyCode::Char('2'), _) => {
-                if self.tab.0 != ActiveScreen::Group {
-                    self.tab = ActiveScreen::group(self.db.clone());
+                (KeyCode::Char('2'), _) => {
+                    if self.tab.0 != ActiveScreen::Group {
+                        self.tab = ActiveScreen::group(self.db.clone());
+                    }
                 }
+                (KeyCode::Char('3'), _) => {}
+                (KeyCode::Char('4'), _) => {}
+                _ => {}
             }
-            (KeyCode::Char('3'), _) => {}
-            (KeyCode::Char('4'), _) => {}
-            _ => {}
         }
 
-        self.tab.1.handle_key_events(&evt)?;
         Ok(())
     }
 
@@ -133,7 +134,10 @@ impl App {
         let [tabs_area, title_area] = horizontal.areas(header_area);
 
         {
-            frame.render_widget("Critic".bold(), title_area);
+            frame.render_widget(
+                Line::from(vec![self.db_name.as_str().blue().bold(), " Critic".bold()]),
+                title_area,
+            );
         }
 
         {

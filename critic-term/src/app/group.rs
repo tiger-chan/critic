@@ -159,7 +159,7 @@ impl AppTab for GroupWidget {
         }
     }
 
-    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
+    fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         match self.mode {
             Mode::Group => {
                 let group_id = self.group_state.borrow().selected();
@@ -249,6 +249,7 @@ impl AppTab for GroupWidget {
                 }
                 _ => {
                     self.input_state.handle_event(&Event::Key(*evt));
+                    return Ok(true);
                 }
             },
             Mode::EditCriteria { group_id, id } => match (evt.code, evt.modifiers) {
@@ -274,10 +275,11 @@ impl AppTab for GroupWidget {
                 }
                 _ => {
                     self.input_state.handle_event(&Event::Key(*evt));
+                    return Ok(true);
                 }
             },
         }
 
-        Ok(())
+        Ok(false)
     }
 }

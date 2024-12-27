@@ -1,11 +1,12 @@
+use std::{cell::RefCell, rc::Rc};
+
 use critic::{dto::Contest, prelude::*};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
-    buffer::Buffer,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{palette::tailwind, Modifier, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use super::AppTab;
@@ -20,11 +21,11 @@ enum Selected {
     Equals,
 }
 
-#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+#[derive(Debug)]
 pub struct RateWidget {
     contest: Contest,
     selected: Selected,
-    db: String,
+    db: Rc<RefCell<Connection>>,
 }
 
 #[allow(unused)]
@@ -45,14 +46,10 @@ fn save_match(
 }
 
 impl RateWidget {
-    pub fn new<T: AsRef<str>>(db: T) -> Self {
+    pub fn new(db: Rc<RefCell<Connection>>) -> Self {
         let contest = {
-            if let Ok(conn) = Connection::open_category(db.as_ref()) {
-                if let Ok(contest) = conn.next_contest() {
-                    contest
-                } else {
-                    Contest::default()
-                }
+            if let Ok(contest) = db.borrow().next_contest() {
+                contest
             } else {
                 Contest::default()
             }
@@ -60,23 +57,21 @@ impl RateWidget {
 
         Self {
             contest,
-            db: db.as_ref().to_string(),
+            db,
             selected: Selected::None,
         }
     }
 }
 
 impl AppTab for RateWidget {
-    fn render(&self, block: Block, area: Rect, buf: &mut Buffer) {
+    fn render(&self, area: Rect, frame: &mut ratatui::Frame) {
         let title = Line::from(vec![
             self.contest.criterion.group_name.as_str().bold(),
             " - ".into(),
             self.contest.criterion.name.as_str().into(),
         ])
         .alignment(Alignment::Center);
-        Paragraph::default()
-            .block(block.title(title))
-            .render(area, buf);
+        frame.render_widget(Block::bordered().title(title), area);
 
         let centered_area = Layout::default()
             .direction(Direction::Vertical)
@@ -140,33 +135,43 @@ impl AppTab for RateWidget {
             1
         };
 
-        Paragraph::new(Line::from(vec!["Skip".into()]))
-            .block(Block::default().borders(Borders::ALL).style(styles[skiped]))
-            .alignment(Alignment::Center)
-            .render(alt_area.split(centered_area[1])[1], buf);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec!["Skip".into()]))
+                .block(Block::default().borders(Borders::ALL).style(styles[skiped]))
+                .alignment(Alignment::Center),
+            alt_area.split(centered_area[1])[1],
+        );
 
-        Paragraph::new(Line::from(vec!["Equal".into()]))
-            .block(Block::default().borders(Borders::ALL).style(styles[equals]))
-            .alignment(Alignment::Center)
-            .render(alt_area.split(centered_area[3])[1], buf);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec!["Equal".into()]))
+                .block(Block::default().borders(Borders::ALL).style(styles[equals]))
+                .alignment(Alignment::Center),
+            alt_area.split(centered_area[3])[1],
+        );
 
-        Paragraph::new(Line::from(vec![Span::styled(a_str, styles[a_style])]))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .style(styles[a_style]),
-            )
-            .alignment(Alignment::Center)
-            .render(card_area[1], buf);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![Span::styled(a_str, styles[a_style])]))
+                .wrap(Wrap { trim: false })
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .style(styles[a_style]),
+                )
+                .alignment(Alignment::Center),
+            card_area[1],
+        );
 
-        Paragraph::new(Line::from(vec![Span::styled(b_str, styles[b_style])]))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .style(styles[b_style]),
-            )
-            .alignment(Alignment::Center)
-            .render(card_area[3], buf);
+        frame.render_widget(
+            Paragraph::new(Line::from(vec![Span::styled(b_str, styles[b_style])]))
+                .wrap(Wrap { trim: false })
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .style(styles[b_style]),
+                )
+                .alignment(Alignment::Center),
+            card_area[3],
+        );
     }
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
@@ -184,18 +189,19 @@ impl AppTab for RateWidget {
                 self.selected = Selected::Right;
             }
             KeyCode::Enter | KeyCode::Char(' ') => {
-                let mut conn =
-                    Connection::open_category(self.db.as_str()).expect("Db should be available");
+                if self.selected != Selected::None {
+                    let mut db = self.db.borrow_mut();
+                    let db = &mut *db;
+                    match self.selected {
+                        Selected::Left => save_match(db, &self.contest, 1.0)?,
+                        Selected::Right => save_match(db, &self.contest, 0.0)?,
+                        Selected::Equals => save_match(db, &self.contest, 0.5)?,
+                        _ => {}
+                    }
 
-                match self.selected {
-                    Selected::Left => save_match(&mut conn, &self.contest, 1.0)?,
-                    Selected::Right => save_match(&mut conn, &self.contest, 0.0)?,
-                    Selected::Equals => save_match(&mut conn, &self.contest, 0.5)?,
-                    _ => {}
+                    self.contest = db.next_contest()?;
+                    self.selected = Selected::None;
                 }
-
-                self.contest = conn.next_contest()?;
-                self.selected = Selected::None;
             }
             _ => {}
         }

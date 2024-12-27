@@ -5,3 +5,10 @@ pub struct Criterion {
     pub name: String,
     pub group_name: String,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct UpdateCriterion {
+    pub id: i32,
+    pub name: String,
+}
+

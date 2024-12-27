@@ -1,17 +1,31 @@
 mod group;
 mod rate;
 
+use std::{cell::RefCell, rc::Rc};
+
+use critic::{prelude::Connection, DbConnection};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use group::GroupWidget;
 use ratatui::{
-    buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout},
+    prelude::Rect,
     style::{palette::tailwind, Stylize},
     text::Line,
-    widgets::{Block, Tabs, Widget},
+    widgets::{Block, Tabs},
     DefaultTerminal, Frame,
 };
 use rate::RateWidget;
+
+#[allow(dead_code)]
+/// Helper function to create a centered rect using up certain percentage of the available rect `r`
+pub(super) fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    use ratatui::layout::Flex;
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum ActiveScreen {
@@ -23,31 +37,37 @@ enum ActiveScreen {
 }
 
 impl ActiveScreen {
-    pub fn rate<T: AsRef<str>>(db: T) -> (ActiveScreen, Box<dyn AppTab>) {
+    pub fn rate(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
         (ActiveScreen::Rate, Box::new(RateWidget::new(db)))
     }
 
-    pub fn group<T: AsRef<str>>(db: T) -> (ActiveScreen, Box<dyn AppTab>) {
+    pub fn group(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
         (ActiveScreen::Group, Box::new(GroupWidget::new(db)))
     }
 }
 
 pub(super) trait AppTab: std::fmt::Debug {
-    fn render(&self, block: Block, area: Rect, buf: &mut Buffer);
+    fn render(&self, area: Rect, frame: &mut Frame);
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 #[derive(Debug)]
 pub struct App {
     tab: (ActiveScreen, Box<dyn AppTab>),
-    db: String,
+    db: Rc<RefCell<Connection>>,
+    db_name: String,
 }
 
 impl App {
     pub fn new<T: AsRef<str>>(db: T) -> Self {
+        let db_name = db.as_ref().to_string();
+        let db = Rc::new(RefCell::new(
+            Connection::open_category(&db_name).expect("A valid db is requred"),
+        ));
         Self {
-            tab: ActiveScreen::rate(db.as_ref()),
-            db: String::default(),
+            tab: ActiveScreen::rate(db.clone()),
+            db,
+            db_name,
         }
     }
 
@@ -63,7 +83,7 @@ impl App {
     }
 
     fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+        self.render(frame);
     }
 
     fn handle_events(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -82,12 +102,12 @@ impl App {
             (KeyCode::Char('q'), _) => self.exit(),
             (KeyCode::Char('1'), _) => {
                 if self.tab.0 != ActiveScreen::Rate {
-                    self.tab = ActiveScreen::rate(&self.db);
+                    self.tab = ActiveScreen::rate(self.db.clone());
                 }
             }
             (KeyCode::Char('2'), _) => {
                 if self.tab.0 != ActiveScreen::Group {
-                    self.tab = ActiveScreen::group(&self.db);
+                    self.tab = ActiveScreen::group(self.db.clone());
                 }
             }
             (KeyCode::Char('3'), _) => {}
@@ -102,14 +122,10 @@ impl App {
     fn exit(&mut self) {
         self.tab.0 = ActiveScreen::Exiting;
     }
-}
 
-impl Widget for &App {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
-    where
-        Self: Sized,
-    {
+    fn render(&self, frame: &mut Frame) {
         use Constraint::{Length, Min};
+        let area = frame.area();
         let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
         let [header_area, inner_area, footer_area] = vertical.areas(area);
 
@@ -117,34 +133,29 @@ impl Widget for &App {
         let [tabs_area, title_area] = horizontal.areas(header_area);
 
         {
-            "Critic".bold().render(title_area, buf);
+            frame.render_widget("Critic".bold(), title_area);
         }
 
         {
             let highlight_style = (tailwind::BLUE.c900, tailwind::SLATE.c200);
-            Tabs::new(vec!["Rate", "Group", "Title", "Top"])
+            let tabs = Tabs::new(vec!["Rate", "Group", "Title", "Top"])
                 .highlight_style(highlight_style)
                 .select(self.tab.0 as usize)
                 .padding("", "")
-                .divider(" ")
-                .render(tabs_area, buf);
+                .divider(" ");
+            frame.render_widget(tabs, tabs_area);
         }
 
         {
             // Active tab screen
-            let block = Block::bordered();
-            self.tab.1.render(block, inner_area, buf);
+            frame.render_widget(Block::bordered(), inner_area);
+            self.tab.1.render(inner_area, frame);
         }
 
         {
-            Line::from(vec![
-                " Load ".into(),
-                " <L> ".blue().bold(),
-                " Quit ".into(),
-                "<Q> ".blue().bold(),
-            ])
-            .centered()
-            .render(footer_area, buf);
+            let help = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]).centered();
+
+            frame.render_widget(help, footer_area);
         }
     }
 }

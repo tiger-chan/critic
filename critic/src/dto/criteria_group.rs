@@ -9,3 +9,9 @@ pub struct CriteriaGroupItem {
     pub id: i32,
     pub name: String,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct UpdateCriteriaGroup {
+    pub id: i32,
+    pub name: String,
+}

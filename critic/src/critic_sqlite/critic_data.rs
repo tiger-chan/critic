@@ -2,10 +2,12 @@ use rusqlite::{params, Connection};
 
 use crate::{dto, CriticData, DbError};
 
+use super::procedures;
+
 impl CriticData for Connection {
     fn next_contest(&self) -> Result<dto::Contest, DbError> {
         let mut stmt = self
-            .prepare(include_str!("next_contest.sql"))
+            .prepare(procedures::NEXT_CONTEST)
             .expect("Failed to prepare statement");
 
         stmt.query_row(params![], |r| {
@@ -50,7 +52,7 @@ impl CriticData for Connection {
         page: usize,
     ) -> Result<Vec<dto::TopRow>, DbError> {
         let mut stmt = self
-            .prepare(include_str!("top_criteria.sql"))
+            .prepare(procedures::TOP_CRITERIA)
             .expect("Failed to prepare statement");
 
         let first = page * count;
@@ -84,7 +86,7 @@ impl CriticData for Connection {
 
     fn all_groups(&self) -> Result<Vec<dto::CriteriaGroup>, DbError> {
         let mut stmt = self
-            .prepare(include_str!("all_groups.sql"))
+            .prepare(procedures::ALL_GROUPS)
             .expect("Failed to prepare statement");
 
         let row_iter = stmt
@@ -106,7 +108,7 @@ impl CriticData for Connection {
 
     fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError> {
         let mut stmt = self
-            .prepare(include_str!("find_criteria.sql"))
+            .prepare(procedures::FIND_CRITERIA)
             .expect("Failed to prepare statement");
 
         let row_iter = stmt

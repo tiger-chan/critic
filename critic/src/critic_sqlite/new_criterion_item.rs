@@ -2,6 +2,8 @@ use rusqlite::{params, Connection};
 
 use crate::{dto::NewCategoryItem, DbError, Record};
 
+use super::procedures;
+
 impl Record<Connection> for NewCategoryItem {
     fn save(&self, connection: &mut Connection) -> Result<usize, DbError> {
         let tx = connection
@@ -10,11 +12,11 @@ impl Record<Connection> for NewCategoryItem {
 
         {
             let mut ins_stmt = tx
-                .prepare(include_str!("ins_entry.sql"))
+                .prepare(procedures::INS_ENTRY)
                 .expect("Failed to prepare statement");
 
             let mut ins_sub_stmt = tx
-                .prepare(include_str!("ins_entry_criterion.sql"))
+                .prepare(procedures::INS_ENTRY_CRITERION)
                 .expect("Failed to prepare statement");
 
             ins_stmt

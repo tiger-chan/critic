@@ -7,14 +7,21 @@ use critic::{prelude::Connection, DbConnection};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use group::GroupWidget;
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Layout},
     prelude::Rect,
-    style::{palette::tailwind, Stylize},
+    style::Stylize,
     text::Line,
     widgets::{Block, Tabs},
     DefaultTerminal, Frame,
 };
 use rate::RateWidget;
+
+pub(super) mod theme {
+    use ratatui::style::{palette::tailwind, Color};
+
+    pub const DEFAULT: Color = tailwind::GRAY.c500;
+    pub const HIGHLIGHT: Color = tailwind::WHITE;
+}
 
 #[allow(dead_code)]
 /// Helper function to create a centered rect using up certain percentage of the available rect `r`
@@ -132,7 +139,7 @@ impl App {
         let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
         let [header_area, inner_area, footer_area] = vertical.areas(area);
 
-        let horizontal = Layout::horizontal([Min(0), Length(20)]);
+        let horizontal = Layout::horizontal([Min(0), Length(30)]);
         let [tabs_area, title_area] = horizontal.areas(header_area);
 
         {
@@ -143,12 +150,15 @@ impl App {
         }
 
         {
-            let highlight_style = (tailwind::BLUE.c900, tailwind::SLATE.c200);
-            let tabs = Tabs::new(vec!["Rate", "Group", "Title", "Top"])
-                .highlight_style(highlight_style)
-                .select(self.tab.0 as usize)
-                .padding("", "")
-                .divider(" ");
+            let tabs = Tabs::new(
+                vec!["Rate [1]", "Group [2]", "Title [3]", "Top [4]"]
+                    .iter()
+                    .map(|x| x.fg(theme::DEFAULT)),
+            )
+            .highlight_style(theme::HIGHLIGHT)
+            .select(self.tab.0 as usize)
+            .padding(" ", " ")
+            .divider("|".fg(theme::DEFAULT));
             frame.render_widget(tabs, tabs_area);
         }
 

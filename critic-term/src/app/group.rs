@@ -1,5 +1,6 @@
 use std::{cell::RefCell, i32, rc::Rc};
 
+use color_eyre::owo_colors::OwoColorize;
 use critic::prelude::*;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
@@ -11,7 +12,7 @@ use ratatui::{
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use super::AppTab;
+use super::{theme, AppTab};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Mode {
@@ -129,15 +130,30 @@ impl AppTab for GroupWidget {
             .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(area);
 
+        let (g_selected, g_unselected) = {
+            match self.mode {
+                Mode::Group | Mode::EditGroup { id: _ } | Mode::NewGroup => {
+                    (theme::HIGHLIGHT, theme::DEFAULT)
+                }
+                _ => (theme::DEFAULT, theme::HIGHLIGHT),
+            }
+        };
+
         let group_items = self
             .groups
             .iter()
             .map(|x| ListItem::new(x.name.as_str()))
             .collect::<Vec<ListItem>>();
 
+        let group_block = Block::default()
+            .borders(Borders::ALL)
+            .fg(g_selected)
+            .title("Groups");
+
         let groups = List::new(group_items)
-            .block(Block::default().borders(Borders::ALL).title("Groups"))
-            .highlight_style(Style::new().reversed())
+            .block(group_block)
+            .fg(theme::DEFAULT)
+            .highlight_style(theme::HIGHLIGHT)
             .highlight_symbol(">>")
             .repeat_highlight_symbol(true);
 
@@ -147,9 +163,15 @@ impl AppTab for GroupWidget {
             .map(|x| ListItem::new(x.name.as_str()))
             .collect::<Vec<ListItem>>();
 
+        let criteria_block = Block::default()
+            .borders(Borders::ALL)
+            .fg(g_unselected)
+            .title("Criteria");
+
         let criteria = List::new(criteria_items)
-            .block(Block::default().borders(Borders::ALL).title("Criteria"))
-            .highlight_style(Style::new().reversed())
+            .block(criteria_block)
+            .fg(theme::DEFAULT)
+            .highlight_style(theme::HIGHLIGHT)
             .highlight_symbol(">>")
             .repeat_highlight_symbol(true);
 
@@ -349,7 +371,7 @@ impl AppTab for GroupWidget {
             },
             Mode::NewCriteria { group_id } => match (evt.code, evt.modifiers) {
                 (KeyCode::Esc, _) => {
-                    self.mode = Mode::Group;
+                    self.mode = Mode::Criteria { group_id };
                 }
                 (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
                     let mut db = self.db.borrow_mut();

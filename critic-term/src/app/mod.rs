@@ -7,7 +7,7 @@ use critic::{prelude::Connection, DbConnection};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use group::GroupWidget;
 use ratatui::{
-    layout::{Constraint, Layout},
+    layout::{Constraint, Direction, Layout},
     prelude::Rect,
     style::{palette::tailwind, Stylize},
     text::Line,
@@ -48,6 +48,8 @@ impl ActiveScreen {
 
 pub(super) trait AppTab: std::fmt::Debug {
     fn render(&self, area: Rect, frame: &mut Frame);
+    #[allow(unused_variables)]
+    fn render_footer(&self, area: Rect, frame: &mut Frame) {}
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>>;
 }
 
@@ -157,9 +159,11 @@ impl App {
         }
 
         {
-            let help = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]).centered();
-
-            frame.render_widget(help, footer_area);
+            let region = Layout::horizontal(Constraint::from_ratios([(7, 8), (1, 8)]));
+            let [tab, main] = region.areas(footer_area);
+            self.tab.1.render_footer(tab, frame);
+            let help = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]).right_aligned();
+            frame.render_widget(help, main);
         }
     }
 }

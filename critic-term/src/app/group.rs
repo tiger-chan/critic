@@ -7,6 +7,7 @@ use ratatui::{
     style::{Style, Stylize},
     text::Line,
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
+    Frame,
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
@@ -16,13 +17,19 @@ use super::AppTab;
 enum Mode {
     #[default]
     Group,
-    Criteria,
+    Criteria {
+        group_id: i32,
+    },
     EditGroup {
         id: i32,
     },
     EditCriteria {
         group_id: i32,
         id: i32,
+    },
+    NewGroup,
+    NewCriteria {
+        group_id: i32,
     },
 }
 
@@ -49,6 +56,32 @@ fn criteria(conn: &Connection, id: i32) -> Vec<CriteriaGroupItem> {
     } else {
         vec![]
     }
+}
+
+fn modal_input(title: &str, area: Rect, state: &Input, frame: &mut Frame) {
+    let block = Block::bordered()
+        .title(title.bold().into_centered_line())
+        .title_bottom(
+            Line::from(vec![
+                "Save ".into(),
+                "<CTRL-S> ".blue().bold(),
+                "Back ".into(),
+                "<ESC>".blue().bold(),
+            ])
+            .centered(),
+        );
+    let area = edit_popup_area(area, 60, 3);
+    frame.render_widget(Clear::default(), area);
+    let input = Paragraph::new(state.value()).block(block);
+    {
+        let width = area.width.max(3) - 3; // Keep 2 for borders and 1 for cursor
+        let scroll = state.visual_scroll(width as usize);
+        frame.set_cursor_position((
+            area.x + 1 + (state.visual_cursor().max(scroll) - scroll) as u16,
+            area.y + 1,
+        ));
+    }
+    frame.render_widget(input, area);
 }
 
 #[derive(Debug, Clone)]
@@ -130,33 +163,32 @@ impl AppTab for GroupWidget {
         *self.criteria_state.borrow_mut() = criteria_state;
 
         match self.mode {
-            Mode::EditGroup { id: _ } | Mode::EditCriteria { group_id: _, id: _ } => {
-                let block = Block::bordered()
-                    .title("Edit".bold().into_centered_line())
-                    .title_bottom(
-                        Line::from(vec![
-                            "Save ".into(),
-                            "<CTRL-S> ".blue().bold(),
-                            "Back ".into(),
-                            "<ESC>".blue().bold(),
-                        ])
-                        .centered(),
-                    );
-                let area = edit_popup_area(area, 60, 3);
-                frame.render_widget(Clear::default(), area);
-                let input = Paragraph::new(self.input_state.value()).block(block);
-                {
-                    let width = area.width.max(3) - 3; // Keep 2 for borders and 1 for cursor
-                    let scroll = self.input_state.visual_scroll(width as usize);
-                    frame.set_cursor_position((
-                        area.x + 1 + (self.input_state.visual_cursor().max(scroll) - scroll) as u16,
-                        area.y + 1,
-                    ));
-                }
-                frame.render_widget(input, area);
+            Mode::NewGroup => {
+                modal_input("New Group", area, &self.input_state, frame);
+            }
+            Mode::NewCriteria { group_id: _ } => {
+                modal_input("New Criterion", area, &self.input_state, frame);
+            }
+            Mode::EditGroup { id: _ } => {
+                modal_input("Edit Group", area, &self.input_state, frame);
+            }
+            Mode::EditCriteria { group_id: _, id: _ } => {
+                modal_input("Edit Criterion", area, &self.input_state, frame);
             }
             _ => {}
         }
+    }
+
+    fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
+        let a_action = match self.mode {
+            Mode::Group | Mode::NewGroup | Mode::EditGroup { id: _ } => " Add Group ",
+            Mode::Criteria { group_id: _ }
+            | Mode::NewCriteria { group_id: _ }
+            | Mode::EditCriteria { group_id: _, id: _ } => "Add Criterion ",
+        };
+        let help =
+            Paragraph::new(Line::from(vec![a_action.into(), "<a>".blue().bold()]).right_aligned());
+        frame.render_widget(help, area);
     }
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
@@ -171,7 +203,17 @@ impl AppTab for GroupWidget {
                         self.group_state.borrow_mut().select_next();
                     }
                     KeyCode::Right => {
-                        self.mode = Mode::Criteria;
+                        if !self.groups.is_empty() {
+                            let group_id = {
+                                let idx = self.group_state.borrow().selected().unwrap();
+                                self.groups[idx].id
+                            };
+                            self.mode = Mode::Criteria { group_id };
+                        }
+                    }
+                    KeyCode::Char('a') => {
+                        self.input_state = Input::default();
+                        self.mode = Mode::NewGroup;
                     }
                     KeyCode::Char('e') => {
                         if !self.groups.is_empty() {
@@ -199,7 +241,7 @@ impl AppTab for GroupWidget {
                     }
                 }
             }
-            Mode::Criteria => match evt.code {
+            Mode::Criteria { group_id } => match evt.code {
                 KeyCode::Up => {
                     self.criteria_state.borrow_mut().select_previous();
                 }
@@ -209,11 +251,11 @@ impl AppTab for GroupWidget {
                 KeyCode::Left => {
                     self.mode = Mode::Group;
                 }
+                KeyCode::Char('a') => {
+                    self.input_state = Input::default();
+                    self.mode = Mode::NewCriteria { group_id };
+                }
                 KeyCode::Char('e') => {
-                    let group_id = {
-                        let idx = self.group_state.borrow().selected().unwrap();
-                        self.groups[idx].id
-                    };
                     let (id, value) = {
                         let idx = self.criteria_state.borrow().selected().unwrap();
                         (self.criteria[idx].id, self.criteria[idx].name.as_str())
@@ -254,7 +296,7 @@ impl AppTab for GroupWidget {
             },
             Mode::EditCriteria { group_id, id } => match (evt.code, evt.modifiers) {
                 (KeyCode::Esc, _) => {
-                    self.mode = Mode::Criteria;
+                    self.mode = Mode::Criteria { group_id };
                 }
                 (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
                     let mut db = self.db.borrow_mut();
@@ -271,7 +313,60 @@ impl AppTab for GroupWidget {
                     self.criteria = criteria(&conn, group_id);
                     let idx = self.criteria.iter().position(|x| x.id == id);
                     *self.criteria_state.borrow_mut().selected_mut() = idx;
-                    self.mode = Mode::Criteria;
+                    self.mode = Mode::Criteria { group_id };
+                }
+                _ => {
+                    self.input_state.handle_event(&Event::Key(*evt));
+                    return Ok(true);
+                }
+            },
+            Mode::NewGroup => match (evt.code, evt.modifiers) {
+                (KeyCode::Esc, _) => {
+                    self.mode = Mode::Group;
+                }
+                (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    let name = self.input_state.value();
+                    let request = NewCriteriaGroup {
+                        name: name.to_string(),
+                    };
+
+                    if let Ok(id) = conn.save(&request) {
+                        self.groups = all_groups(&conn);
+                        self.criteria = criteria(&conn, id as i32);
+                        let idx = self.groups.iter().position(|x| x.id == id as i32);
+                        *self.group_state.borrow_mut().selected_mut() = idx;
+                        self.criteria_state.borrow_mut().select_first();
+                        self.mode = Mode::Group;
+                    }
+                }
+                _ => {
+                    self.input_state.handle_event(&Event::Key(*evt));
+                    return Ok(true);
+                }
+            },
+            Mode::NewCriteria { group_id } => match (evt.code, evt.modifiers) {
+                (KeyCode::Esc, _) => {
+                    self.mode = Mode::Group;
+                }
+                (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    let name = self.input_state.value();
+                    let request = NewCriterion {
+                        group: group_id,
+                        name: name.to_string(),
+                    };
+
+                    if let Ok(_) = conn.save(&request) {
+                        self.criteria = criteria(&conn, group_id);
+                        let idx = self.criteria.iter().position(|x| x.name == name);
+                        *self.criteria_state.borrow_mut().selected_mut() = idx;
+                        self.mode = Mode::Group;
+                    }
                 }
                 _ => {
                     self.input_state.handle_event(&Event::Key(*evt));

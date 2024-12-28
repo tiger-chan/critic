@@ -12,3 +12,8 @@ pub struct UpdateCriterion {
     pub name: String,
 }
 
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct NewCriterion {
+    pub group: i32,
+    pub name: String,
+}

@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 
 use crate::{
-    dto::{NewCriterion, UpdateCriterion},
+    dto::{DeleteCriterion, NewCriterion, UpdateCriterion},
     DbError, Record,
 };
 
@@ -25,6 +25,14 @@ impl Record<Connection> for NewCriterion {
             .expect("Failed to prepare statement");
 
         stmt.execute(params![self.group, self.name])
+            .map_err(DbError::Sqlite)
+    }
+}
+
+impl Record<Connection> for DeleteCriterion {
+    fn save(&self, connection: &mut Connection) -> Result<usize, DbError> {
+        connection
+            .execute(procedures::DELETE_CRITERION, params![self.id])
             .map_err(DbError::Sqlite)
     }
 }

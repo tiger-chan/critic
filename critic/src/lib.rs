@@ -47,8 +47,9 @@ pub mod prelude {
     pub use crate::critic_sqlite::Connection;
     pub use crate::{
         dto::{
-            CategoryItem, CriteriaGroup, CriteriaGroupItem, Criterion, MatchResult,
-            NewCategoryItem, NewCriteriaGroup, NewCriterion, UpdateCriteriaGroup, UpdateCriterion,
+            CategoryItem, CriteriaGroup, CriteriaGroupItem, Criterion, DeleteCriteriaGroup,
+            DeleteCriterion, MatchResult, NewCategoryItem, NewCriteriaGroup, NewCriterion,
+            UpdateCriteriaGroup, UpdateCriterion,
         },
         CriticData, DbConnection, DbError, Record,
     };

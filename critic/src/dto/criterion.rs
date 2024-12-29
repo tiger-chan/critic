@@ -17,3 +17,8 @@ pub struct NewCriterion {
     pub group: i32,
     pub name: String,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct DeleteCriterion {
+    pub id: i32,
+}

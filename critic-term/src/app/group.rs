@@ -1,18 +1,17 @@
 use std::{cell::RefCell, i32, rc::Rc};
 
-use color_eyre::owo_colors::OwoColorize;
 use critic::prelude::*;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Style, Stylize},
+    style::Stylize,
     text::Line,
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
     Frame,
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use super::{theme, AppTab};
+use super::{popup_area, theme, AppTab};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Mode {
@@ -31,6 +30,13 @@ enum Mode {
     NewGroup,
     NewCriteria {
         group_id: i32,
+    },
+    DeleteGroup {
+        id: i32,
+    },
+    DeleteCriteria {
+        group_id: i32,
+        id: i32,
     },
 }
 
@@ -197,19 +203,72 @@ impl AppTab for GroupWidget {
             Mode::EditCriteria { group_id: _, id: _ } => {
                 modal_input("Edit Criterion", area, &self.input_state, frame);
             }
+            Mode::DeleteGroup { id: _ } => {
+                let area = popup_area(area, 50, 50);
+                frame.render_widget(Clear::default(), area);
+
+                let text = vec![
+                    Line::from("Are your sure you want to delete the group?").centered(),
+                    Line::from(vec!["[Y]es".blue().bold(), "[N]o".blue().bold()]).centered(),
+                ];
+
+                frame.render_widget(
+                    Paragraph::new(text)
+                        .block(Block::default().borders(Borders::ALL).title("Delete Group")),
+                    area,
+                );
+            }
+            Mode::DeleteCriteria { group_id: _, id: _ } => {
+                let area = popup_area(area, 50, 50);
+                frame.render_widget(Clear::default(), area);
+                let text = vec![
+                    Line::from("Are your sure you want to delete the group?").centered(),
+                    Line::from(vec!["[Y]es".blue().bold(), "[N]o".blue().bold()]).centered(),
+                ];
+
+                frame.render_widget(
+                    Paragraph::new(text).block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Delete Criterion"),
+                    ),
+                    area,
+                );
+            }
             _ => {}
         }
     }
 
     fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
         let a_action = match self.mode {
-            Mode::Group | Mode::NewGroup | Mode::EditGroup { id: _ } => " Add Group ",
+            Mode::Group
+            | Mode::NewGroup
+            | Mode::EditGroup { id: _ }
+            | Mode::DeleteGroup { id: _ } => " Add ",
             Mode::Criteria { group_id: _ }
             | Mode::NewCriteria { group_id: _ }
-            | Mode::EditCriteria { group_id: _, id: _ } => "Add Criterion ",
+            | Mode::EditCriteria { group_id: _, id: _ }
+            | Mode::DeleteCriteria { group_id: _, id: _ } => "Add ",
         };
-        let help =
-            Paragraph::new(Line::from(vec![a_action.into(), "<a>".blue().bold()]).right_aligned());
+        let d_action = match self.mode {
+            Mode::Group
+            | Mode::NewGroup
+            | Mode::EditGroup { id: _ }
+            | Mode::DeleteGroup { id: _ } => " Delete ",
+            Mode::Criteria { group_id: _ }
+            | Mode::NewCriteria { group_id: _ }
+            | Mode::EditCriteria { group_id: _, id: _ }
+            | Mode::DeleteCriteria { group_id: _, id: _ } => "Delete ",
+        };
+        let help = Paragraph::new(
+            Line::from(vec![
+                a_action.into(),
+                "<a> ".blue().bold(),
+                d_action.into(),
+                "<d>".blue().bold(),
+            ])
+            .right_aligned(),
+        );
         frame.render_widget(help, area);
     }
 
@@ -236,6 +295,13 @@ impl AppTab for GroupWidget {
                     KeyCode::Char('a') => {
                         self.input_state = Input::default();
                         self.mode = Mode::NewGroup;
+                    }
+                    KeyCode::Char('d') => {
+                        let id = {
+                            let idx = self.group_state.borrow().selected().unwrap();
+                            self.groups[idx].id
+                        };
+                        self.mode = Mode::DeleteGroup { id };
                     }
                     KeyCode::Char('e') => {
                         if !self.groups.is_empty() {
@@ -276,6 +342,13 @@ impl AppTab for GroupWidget {
                 KeyCode::Char('a') => {
                     self.input_state = Input::default();
                     self.mode = Mode::NewCriteria { group_id };
+                }
+                KeyCode::Char('d') => {
+                    let id = {
+                        let idx = self.criteria_state.borrow().selected().unwrap();
+                        self.criteria[idx].id
+                    };
+                    self.mode = Mode::DeleteCriteria { group_id, id };
                 }
                 KeyCode::Char('e') => {
                     let (id, value) = {
@@ -394,6 +467,55 @@ impl AppTab for GroupWidget {
                     self.input_state.handle_event(&Event::Key(*evt));
                     return Ok(true);
                 }
+            },
+            Mode::DeleteGroup { id } => match evt.code {
+                KeyCode::Char('y') => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    let request = DeleteCriteriaGroup { id };
+
+                    let idx = self.group_state.borrow().selected().unwrap();
+                    conn.save(&request)?;
+                    self.groups = all_groups(&conn);
+                    if idx < self.groups.len() {
+                        let id = self.groups[idx].id;
+                        self.criteria = criteria(&conn, id);
+                    } else if !self.groups.is_empty() {
+                        self.group_state.borrow_mut().select_last();
+                        let id = self.groups.last().unwrap().id;
+                        self.criteria = criteria(&conn, id);
+                    } else {
+                        self.criteria.clear();
+                    }
+                    self.criteria_state.borrow_mut().select_first();
+                    self.mode = Mode::Group;
+                }
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.mode = Mode::Group;
+                }
+                _ => {}
+            },
+            Mode::DeleteCriteria { group_id, id } => match evt.code {
+                KeyCode::Char('y') => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    let request = DeleteCriterion { id };
+
+                    let idx = self.criteria_state.borrow().selected().unwrap();
+                    if let Ok(_) = conn.save(&request) {
+                        self.criteria = criteria(&conn, group_id);
+                        if idx >= self.criteria.len() {
+                            self.criteria_state.borrow_mut().select_last();
+                        }
+                        self.mode = Mode::Criteria { group_id };
+                    }
+                }
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.mode = Mode::Group;
+                }
+                _ => {}
             },
         }
 

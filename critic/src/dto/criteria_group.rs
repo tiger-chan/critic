@@ -20,3 +20,8 @@ pub struct UpdateCriteriaGroup {
 pub struct NewCriteriaGroup {
     pub name: String,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct DeleteCriteriaGroup {
+    pub id: i32,
+}

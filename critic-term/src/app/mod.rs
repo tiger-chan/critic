@@ -1,5 +1,6 @@
 mod group;
 mod rate;
+mod title_tab;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -15,6 +16,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use rate::RateWidget;
+use title_tab::TitleWidget;
 
 pub(super) mod theme {
     use ratatui::style::{palette::tailwind, Color};
@@ -50,6 +52,10 @@ impl ActiveScreen {
 
     pub fn group(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
         (ActiveScreen::Group, Box::new(GroupWidget::new(db)))
+    }
+
+    pub fn title(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
+        (ActiveScreen::Title, Box::new(TitleWidget::new(db)))
     }
 }
 
@@ -120,7 +126,11 @@ impl App {
                         self.tab = ActiveScreen::group(self.db.clone());
                     }
                 }
-                (KeyCode::Char('3'), _) => {}
+                (KeyCode::Char('3'), _) => {
+                    if self.tab.0 != ActiveScreen::Title {
+                        self.tab = ActiveScreen::title(self.db.clone());
+                    }
+                }
                 (KeyCode::Char('4'), _) => {}
                 _ => {}
             }

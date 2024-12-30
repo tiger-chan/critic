@@ -12,11 +12,11 @@ impl Record<Connection> for NewCategoryItem {
 
         {
             let mut ins_stmt = tx
-                .prepare(procedures::INS_ENTRY)
+                .prepare(procedures::CREATE_TITLE)
                 .expect("Failed to prepare statement");
 
             let mut ins_sub_stmt = tx
-                .prepare(procedures::INS_ENTRY_CRITERION)
+                .prepare(procedures::CREATE_TITLE_CRITERIA)
                 .expect("Failed to prepare statement");
 
             ins_stmt

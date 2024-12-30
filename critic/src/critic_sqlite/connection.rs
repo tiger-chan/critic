@@ -34,7 +34,7 @@ impl DbConnection for Connection {
 
                 {
                     let mut ins_stmt = tx
-                        .prepare(procedures::INS_ENTRY)
+                        .prepare(procedures::CREATE_TITLE)
                         .expect("Failed to prepare statement");
 
                     let mut ins_group_criteria_stmt = tx
@@ -46,7 +46,7 @@ impl DbConnection for Connection {
                         .expect("Failed to prepare statement");
 
                     let mut ins_sub_stmt = tx
-                        .prepare(procedures::INS_ENTRY_CRITERION)
+                        .prepare(procedures::CREATE_TITLE_CRITERIA)
                         .expect("Failed to prepare statement");
 
                     for group in DEFAULT_CRITERIA {

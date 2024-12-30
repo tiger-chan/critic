@@ -40,6 +40,8 @@ pub trait CriticData {
     ) -> Result<Vec<dto::TopRow>, DbError>;
     fn all_groups(&self) -> Result<Vec<dto::CriteriaGroup>, DbError>;
     fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError>;
+    fn all_titles(&self) -> Result<Vec<dto::Title>, DbError>;
+    fn groups_by_title(&self, title_id: i32) -> Result<Vec<dto::CriteriaGroup>, DbError>;
 }
 
 pub mod prelude {
@@ -49,7 +51,7 @@ pub mod prelude {
         dto::{
             CategoryItem, CriteriaGroup, CriteriaGroupItem, Criterion, DeleteCriteriaGroup,
             DeleteCriterion, MatchResult, NewCategoryItem, NewCriteriaGroup, NewCriterion,
-            UpdateCriteriaGroup, UpdateCriterion,
+            NewTitle, Title, UpdateCriteriaGroup, UpdateCriterion, UpdateTitle,
         },
         CriticData, DbConnection, DbError, Record,
     };

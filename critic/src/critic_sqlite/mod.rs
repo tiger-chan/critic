@@ -4,6 +4,7 @@ mod criterion;
 mod critic_data;
 mod match_result;
 mod new_criterion_item;
+mod title;
 
 mod procedures;
 

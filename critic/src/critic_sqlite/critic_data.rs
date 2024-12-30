@@ -127,4 +127,48 @@ impl CriticData for Connection {
 
         Ok(results)
     }
+
+    fn all_titles(&self) -> Result<Vec<dto::Title>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::ALL_TITLES)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![], |r| {
+                Ok(dto::Title {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn groups_by_title(&self, id: i32) -> Result<Vec<dto::CriteriaGroup>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::FIND_GROUPS_BY_TITLE)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![id], |r| {
+                Ok(dto::CriteriaGroup {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
 }

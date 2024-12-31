@@ -4,12 +4,12 @@ use critic::{dto::Contest, prelude::*};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{palette::tailwind, Modifier, Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use super::AppTab;
+use super::{theme, AppTab};
 
 #[derive(Default, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Selected {
@@ -105,9 +105,9 @@ impl AppTab for RateWidget {
 
         let styles = [
             Style::default()
-                .fg(tailwind::YELLOW.c200)
+                .fg(theme::HIGHLIGHT)
                 .add_modifier(Modifier::BOLD),
-            Style::default().fg(tailwind::WHITE),
+            Style::default().fg(theme::DEFAULT),
         ];
 
         let a_str = self.contest.a.name.as_str();

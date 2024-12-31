@@ -25,6 +25,42 @@ pub(super) mod theme {
     pub const HIGHLIGHT: Color = tailwind::WHITE;
 }
 
+pub(super) fn modal_input_single_line(title: &str, area: Rect, state: &tui_input::Input, frame: &mut Frame) {
+    use ratatui::widgets::{Clear, Paragraph};
+    let block = Block::bordered()
+        .title(title.bold().into_centered_line())
+        .title_bottom(
+            Line::from(vec![
+                "Save ".into(),
+                "<CTRL-S> ".blue().bold(),
+                "Back ".into(),
+                "<ESC>".blue().bold(),
+            ])
+            .centered(),
+        );
+    let area = edit_popup_area(area, 60, 3);
+    frame.render_widget(Clear::default(), area);
+    let input = Paragraph::new(state.value()).block(block);
+    {
+        let width = area.width.max(3) - 3; // Keep 2 for borders and 1 for cursor
+        let scroll = state.visual_scroll(width as usize);
+        frame.set_cursor_position((
+            area.x + 1 + (state.visual_cursor().max(scroll) - scroll) as u16,
+            area.y + 1,
+        ));
+    }
+    frame.render_widget(input, area);
+}
+
+pub(super) fn edit_popup_area(area: Rect, percent_x: u16, size_y: u16) -> Rect {
+    use ratatui::layout::Flex;
+    let vertical = Layout::vertical([Constraint::Length(size_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
+}
+
 #[allow(dead_code)]
 /// Helper function to create a centered rect using up certain percentage of the available rect `r`
 pub(super) fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {

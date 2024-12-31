@@ -50,8 +50,9 @@ pub mod prelude {
     pub use crate::{
         dto::{
             CategoryItem, CriteriaGroup, CriteriaGroupItem, Criterion, DeleteCriteriaGroup,
-            DeleteCriterion, MatchResult, NewCategoryItem, NewCriteriaGroup, NewCriterion,
-            NewTitle, Title, UpdateCriteriaGroup, UpdateCriterion, UpdateTitle,
+            DeleteCriterion, DeleteTitle, DeleteTitleCriteria, MatchResult, NewCategoryItem,
+            NewCriteriaGroup, NewCriterion, NewTitle, Title, UpdateCriteriaGroup, UpdateCriterion,
+            UpdateTitle,
         },
         CriticData, DbConnection, DbError, Record,
     };

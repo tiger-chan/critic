@@ -46,7 +46,7 @@ impl DbConnection for Connection {
                         .expect("Failed to prepare statement");
 
                     let mut ins_sub_stmt = tx
-                        .prepare(procedures::CREATE_TITLE_CRITERIA)
+                        .prepare(procedures::CREATE_TITLE_CRITERIA_BY_NAME)
                         .expect("Failed to prepare statement");
 
                     for group in DEFAULT_CRITERIA {

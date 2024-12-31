@@ -32,3 +32,14 @@ pub struct NewTitleCriteria {
     pub title: i32,
     pub criteria: i32,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct DeleteTitle {
+    pub id: i32,
+}
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct DeleteTitleCriteria {
+    pub title: i32,
+    pub criteria: i32,
+}

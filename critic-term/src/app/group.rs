@@ -7,11 +7,10 @@ use ratatui::{
     style::Stylize,
     text::Line,
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
-    Frame,
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
 
-use super::{popup_area, theme, AppTab};
+use super::{modal_input_single_line, popup_area, theme, AppTab};
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Mode {
@@ -40,15 +39,6 @@ enum Mode {
     },
 }
 
-pub(super) fn edit_popup_area(area: Rect, percent_x: u16, size_y: u16) -> Rect {
-    use ratatui::layout::Flex;
-    let vertical = Layout::vertical([Constraint::Length(size_y)]).flex(Flex::Center);
-    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
-    let [area] = vertical.areas(area);
-    let [area] = horizontal.areas(area);
-    area
-}
-
 fn all_groups(conn: &Connection) -> Vec<CriteriaGroup> {
     if let Ok(groups) = conn.all_groups() {
         groups
@@ -63,32 +53,6 @@ fn criteria(conn: &Connection, id: i32) -> Vec<CriteriaGroupItem> {
     } else {
         vec![]
     }
-}
-
-fn modal_input(title: &str, area: Rect, state: &Input, frame: &mut Frame) {
-    let block = Block::bordered()
-        .title(title.bold().into_centered_line())
-        .title_bottom(
-            Line::from(vec![
-                "Save ".into(),
-                "<CTRL-S> ".blue().bold(),
-                "Back ".into(),
-                "<ESC>".blue().bold(),
-            ])
-            .centered(),
-        );
-    let area = edit_popup_area(area, 60, 3);
-    frame.render_widget(Clear::default(), area);
-    let input = Paragraph::new(state.value()).block(block);
-    {
-        let width = area.width.max(3) - 3; // Keep 2 for borders and 1 for cursor
-        let scroll = state.visual_scroll(width as usize);
-        frame.set_cursor_position((
-            area.x + 1 + (state.visual_cursor().max(scroll) - scroll) as u16,
-            area.y + 1,
-        ));
-    }
-    frame.render_widget(input, area);
 }
 
 #[derive(Debug, Clone)]
@@ -192,16 +156,16 @@ impl AppTab for GroupWidget {
 
         match self.mode {
             Mode::NewGroup => {
-                modal_input("New Group", area, &self.input_state, frame);
+                modal_input_single_line("New Group", area, &self.input_state, frame);
             }
             Mode::NewCriteria { group_id: _ } => {
-                modal_input("New Criterion", area, &self.input_state, frame);
+                modal_input_single_line("New Criterion", area, &self.input_state, frame);
             }
             Mode::EditGroup { id: _ } => {
-                modal_input("Edit Group", area, &self.input_state, frame);
+                modal_input_single_line("Edit Group", area, &self.input_state, frame);
             }
             Mode::EditCriteria { group_id: _, id: _ } => {
-                modal_input("Edit Criterion", area, &self.input_state, frame);
+                modal_input_single_line("Edit Criterion", area, &self.input_state, frame);
             }
             Mode::DeleteGroup { id: _ } => {
                 let area = popup_area(area, 50, 50);
@@ -240,31 +204,11 @@ impl AppTab for GroupWidget {
     }
 
     fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
-        let a_action = match self.mode {
-            Mode::Group
-            | Mode::NewGroup
-            | Mode::EditGroup { id: _ }
-            | Mode::DeleteGroup { id: _ } => " Add ",
-            Mode::Criteria { group_id: _ }
-            | Mode::NewCriteria { group_id: _ }
-            | Mode::EditCriteria { group_id: _, id: _ }
-            | Mode::DeleteCriteria { group_id: _, id: _ } => "Add ",
-        };
-        let d_action = match self.mode {
-            Mode::Group
-            | Mode::NewGroup
-            | Mode::EditGroup { id: _ }
-            | Mode::DeleteGroup { id: _ } => " Delete ",
-            Mode::Criteria { group_id: _ }
-            | Mode::NewCriteria { group_id: _ }
-            | Mode::EditCriteria { group_id: _, id: _ }
-            | Mode::DeleteCriteria { group_id: _, id: _ } => "Delete ",
-        };
         let help = Paragraph::new(
             Line::from(vec![
-                a_action.into(),
+                " Add ".into(),
                 "<a> ".blue().bold(),
-                d_action.into(),
+                " Delete ".into(),
                 "<d>".blue().bold(),
             ])
             .right_aligned(),

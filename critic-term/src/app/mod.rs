@@ -1,6 +1,7 @@
 mod group;
 mod rate;
 mod title_tab;
+mod top_tab;
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -17,6 +18,7 @@ use ratatui::{
 };
 use rate::RateWidget;
 use title_tab::TitleWidget;
+use top_tab::TopWidget;
 
 pub(super) mod theme {
     use ratatui::style::{palette::tailwind, Color};
@@ -25,7 +27,12 @@ pub(super) mod theme {
     pub const HIGHLIGHT: Color = tailwind::WHITE;
 }
 
-pub(super) fn modal_input_single_line(title: &str, area: Rect, state: &tui_input::Input, frame: &mut Frame) {
+pub(super) fn modal_input_single_line(
+    title: &str,
+    area: Rect,
+    state: &tui_input::Input,
+    frame: &mut Frame,
+) {
     use ratatui::widgets::{Clear, Paragraph};
     let block = Block::bordered()
         .title(title.bold().into_centered_line())
@@ -92,6 +99,10 @@ impl ActiveScreen {
 
     pub fn title(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
         (ActiveScreen::Title, Box::new(TitleWidget::new(db)))
+    }
+
+    pub fn top(db: Rc<RefCell<Connection>>) -> (ActiveScreen, Box<dyn AppTab>) {
+        (ActiveScreen::Top, Box::new(TopWidget::new(db)))
     }
 }
 
@@ -167,7 +178,11 @@ impl App {
                         self.tab = ActiveScreen::title(self.db.clone());
                     }
                 }
-                (KeyCode::Char('4'), _) => {}
+                (KeyCode::Char('4'), _) => {
+                    if self.tab.0 != ActiveScreen::Top {
+                        self.tab = ActiveScreen::top(self.db.clone());
+                    }
+                }
                 _ => {}
             }
         }

@@ -56,12 +56,11 @@ impl CriticData for Connection {
             .expect("Failed to prepare statement");
 
         let first = page * count;
-        let last = (page + 1) * count;
 
         let params = if criteria_group.is_empty() {
-            params![rusqlite::types::Null, first, last]
+            params![rusqlite::types::Null, count, first]
         } else {
-            params![criteria_group, first, last]
+            params![criteria_group, count, first]
         };
 
         let row_iter = stmt

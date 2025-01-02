@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::Constraint,
     prelude::Rect,
-    text::Text,
+    text::{Line, Span, Text},
     widgets::{Block, Borders, Row, Table, TableState},
     Frame,
 };
@@ -15,6 +15,7 @@ pub struct TopWidget {
     db: Rc<RefCell<Connection>>,
     rows: Vec<dto::TopRow>,
     page: usize,
+    criteria: String,
     state: RefCell<TableState>,
 }
 
@@ -27,6 +28,7 @@ impl TopWidget {
             db,
             rows,
             page: 0,
+            criteria: "".to_string(),
             state: RefCell::new(state),
         }
     }
@@ -42,6 +44,10 @@ impl AppTab for TopWidget {
             ])
         });
         let columns = Constraint::from_ratios([(3, 8), (3, 8), (2, 8)]);
+        let criteria = Line::from(vec![
+            Span::from("Criteria: "),
+            Span::from(self.criteria.as_str()),
+        ]);
         let table = Table::new(rows, columns)
             .header(
                 Row::new(vec!["Title", "Criteria", "ELO"])
@@ -51,11 +57,14 @@ impl AppTab for TopWidget {
             .column_spacing(1)
             .style(theme::DEFAULT)
             .row_highlight_style(theme::HIGHLIGHT)
-            .block(Block::default().borders(Borders::ALL));
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title_bottom(criteria),
+            );
 
-        let mut state = self.state.borrow().clone();
-        frame.render_stateful_widget(table, area, &mut state);
-        *self.state.borrow_mut() = state;
+        let state = &mut *self.state.borrow_mut();
+        frame.render_stateful_widget(table, area, state);
     }
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
@@ -87,6 +96,20 @@ impl AppTab for TopWidget {
                     self.page = page;
                     self.state.borrow_mut().select_first();
                 }
+            }
+            KeyCode::Enter | KeyCode::Char(' ') => {
+                let db = self.db.borrow();
+                let db = &*db;
+                if self.criteria.is_empty() {
+                    if let Some(idx) = self.state.borrow().selected() {
+                        self.criteria = self.rows[idx].group.clone();
+                    }
+                } else {
+                    self.criteria = "".to_string();
+                }
+                self.page = 0;
+                self.state.borrow_mut().select_first();
+                self.rows = top_rows(&db, &self.criteria, self.page);
             }
             _ => {}
         }

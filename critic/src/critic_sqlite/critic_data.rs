@@ -2,10 +2,12 @@ use rusqlite::{params, Connection};
 
 use crate::{dto, CriticData, DbError};
 
+use super::procedures;
+
 impl CriticData for Connection {
     fn next_contest(&self) -> Result<dto::Contest, DbError> {
         let mut stmt = self
-            .prepare(include_str!("next_contest.sql"))
+            .prepare(procedures::NEXT_CONTEST)
             .expect("Failed to prepare statement");
 
         stmt.query_row(params![], |r| {
@@ -50,16 +52,15 @@ impl CriticData for Connection {
         page: usize,
     ) -> Result<Vec<dto::TopRow>, DbError> {
         let mut stmt = self
-            .prepare(include_str!("top_criteria.sql"))
+            .prepare(procedures::TOP_CRITERIA)
             .expect("Failed to prepare statement");
 
         let first = page * count;
-        let last = (page + 1) * count;
 
         let params = if criteria_group.is_empty() {
-            params![rusqlite::types::Null, first, last]
+            params![rusqlite::types::Null, count, first]
         } else {
-            params![criteria_group, first, last]
+            params![criteria_group, count, first]
         };
 
         let row_iter = stmt
@@ -70,6 +71,94 @@ impl CriticData for Connection {
                     group: r.get(0)?,
                     entry: r.get(1)?,
                     elo,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn all_groups(&self) -> Result<Vec<dto::CriteriaGroup>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::ALL_GROUPS)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![], |r| {
+                Ok(dto::CriteriaGroup {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::FIND_CRITERIA)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![id], |r| {
+                Ok(dto::CriteriaGroupItem {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn all_titles(&self) -> Result<Vec<dto::Title>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::ALL_TITLES)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![], |r| {
+                Ok(dto::Title {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
+
+    fn groups_by_title(&self, id: i32) -> Result<Vec<dto::CriteriaGroup>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::FIND_GROUPS_BY_TITLE)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![id], |r| {
+                Ok(dto::CriteriaGroup {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
                 })
             })
             .map_err(DbError::Sqlite)?;

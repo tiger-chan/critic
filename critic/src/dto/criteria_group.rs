@@ -1,24 +1,27 @@
 #[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
-pub struct Criterion {
-    pub group: i32,
-    pub id: i32,
-    pub name: String,
-    pub group_name: String,
-}
-
-#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
-pub struct UpdateCriterion {
+pub struct CriteriaGroup {
     pub id: i32,
     pub name: String,
 }
 
 #[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
-pub struct NewCriterion {
-    pub group: i32,
+pub struct CriteriaGroupItem {
+    pub id: i32,
     pub name: String,
 }
 
 #[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
-pub struct DeleteCriterion {
+pub struct UpdateCriteriaGroup {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct NewCriteriaGroup {
+    pub name: String,
+}
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct DeleteCriteriaGroup {
     pub id: i32,
 }

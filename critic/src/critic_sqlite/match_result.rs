@@ -2,6 +2,8 @@ use rusqlite::{params, Connection};
 
 use crate::{dto::MatchResult, DbError, Record};
 
+use super::procedures;
+
 impl Record<Connection> for MatchResult {
     fn save(&self, connection: &mut Connection) -> Result<usize, DbError> {
         let tx = connection
@@ -10,11 +12,11 @@ impl Record<Connection> for MatchResult {
 
         {
             let mut ins_stmt = tx
-                .prepare(include_str!("add_contest_result.sql"))
+                .prepare(procedures::ADD_CONTEST_RESULT)
                 .expect("Failed to prepare statement");
 
             let mut update_stmt = tx
-                .prepare(include_str!("update_elo.sql"))
+                .prepare(procedures::UPDATE_ELO)
                 .expect("Failed to prepare statement");
 
             ins_stmt

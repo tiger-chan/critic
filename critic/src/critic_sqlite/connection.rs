@@ -3,14 +3,19 @@ use crate::{DbConnection, DbError, Record};
 use rusqlite::params;
 pub use rusqlite::Connection;
 
-use super::super::seed::{DEFAULT_CRITERIA, ENTRIES};
+use super::{
+    super::seed::{DEFAULT_CRITERIA, ENTRIES},
+    procedures,
+};
 
 impl DbConnection for Connection {
     fn open_category<T: AsRef<std::path::Path>>(path: T) -> Result<Self, DbError> {
         let conn = Connection::open(path.as_ref()).map_err(DbError::Sqlite)?;
+        conn.execute("PRAGMA foreign_keys=ON;", params![])
+            .map_err(DbError::Sqlite)?;
 
         let mut conn = conn
-            .execute_batch(include_str!("create.sql"))
+            .execute_batch(procedures::CREATE)
             .map_err(DbError::Sqlite)
             .map(|_| conn)?;
 
@@ -29,19 +34,19 @@ impl DbConnection for Connection {
 
                 {
                     let mut ins_stmt = tx
-                        .prepare(include_str!("ins_entry.sql"))
+                        .prepare(procedures::CREATE_TITLE)
                         .expect("Failed to prepare statement");
 
                     let mut ins_group_criteria_stmt = tx
-                        .prepare(include_str!("ins_group_criteria.sql"))
+                        .prepare(procedures::CREATE_GROUP_CRITERIA)
                         .expect("Failed to prepare statement");
 
                     let mut ins_criteria_stmt = tx
-                        .prepare(include_str!("ins_criterion.sql"))
+                        .prepare(procedures::CREATE_CRITERION)
                         .expect("Failed to prepare statement");
 
                     let mut ins_sub_stmt = tx
-                        .prepare(include_str!("ins_entry_criterion.sql"))
+                        .prepare(procedures::CREATE_TITLE_CRITERIA_BY_NAME)
                         .expect("Failed to prepare statement");
 
                     for group in DEFAULT_CRITERIA {

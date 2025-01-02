@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS criteria (
     id INTEGER PRIMARY KEY NOT NULL,
     value STRING NOT NULL,
     group_id INTEGER NOT NULL,
-    FOREIGN KEY (group_id) REFERENCES criteria_group(id),
+    FOREIGN KEY (group_id) REFERENCES criteria_group(id) ON DELETE CASCADE,
     UNIQUE(value, group_id)
 );
 
@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS entry_criteria (
     elo REAL DEFAULT 1000.0 NOT NULL,
     entry_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,
-    FOREIGN KEY (entry_id) REFERENCES entries(id)
-    FOREIGN KEY (group_id) REFERENCES group_criteria(id)
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+    FOREIGN KEY (group_id) REFERENCES criteria_group(id) ON DELETE CASCADE
     UNIQUE(entry_id, group_id)
 );
 
@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS match_history (
     elo_adj_a REAL NOT NULL,
     elo_adj_b REAL NOT NULL,
     time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (criterion_id) REFERENCES criteria(id),
-    FOREIGN KEY (a_id) REFERENCES entries(id),
-    FOREIGN KEY (b_id) REFERENCES entries(id)
+    FOREIGN KEY (criterion_id) REFERENCES criteria(id) ON DELETE CASCADE,
+    FOREIGN KEY (a_id) REFERENCES entries(id) ON DELETE CASCADE,
+    FOREIGN KEY (b_id) REFERENCES entries(id) ON DELETE CASCADE
 );
 COMMIT;

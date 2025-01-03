@@ -2,7 +2,6 @@
 pub mod critic_sqlite;
 pub mod dto;
 pub mod elo;
-mod seed;
 
 #[derive(Debug)]
 pub enum DbError {

@@ -16,7 +16,6 @@ pub const CREATE_TITLE: &str = include_str!("create_title.sql");
 pub const UPDATE_TITLE: &str = include_str!("update_title.sql");
 pub const DELETE_TITLE: &str = include_str!("delete_title.sql");
 pub const CREATE_TITLE_CRITERIA: &str = include_str!("create_title_criteria.sql");
-pub const CREATE_TITLE_CRITERIA_BY_NAME: &str = include_str!("create_title_criteria_by_name.sql");
 pub const DELETE_TITLE_CRITERIA: &str = include_str!("delete_title_criteria.sql");
 
 pub const TOP_CRITERIA: &str = include_str!("top_criteria.sql");

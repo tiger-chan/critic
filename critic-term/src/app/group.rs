@@ -206,14 +206,14 @@ impl AppTab for GroupWidget {
     fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
         let help = Paragraph::new(
             Line::from(vec![
-                " Add ".into(),
-                "<CTRL-a> ".blue().bold(),
-                " Edit ".into(),
-                "<e> ".blue().bold(),
+                " [^a]".blue().bold(),
+                " Add".into(),
+                " [e]".blue().bold(),
+                " Edit".into(),
+                " [^d]".blue().bold(),
                 " Delete ".into(),
-                "<CTRL-d>".blue().bold(),
             ])
-            .right_aligned(),
+            .left_aligned(),
         );
         frame.render_widget(help, area);
     }

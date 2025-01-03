@@ -210,12 +210,12 @@ impl AppTab for TitleWidget {
             }
             _ => Paragraph::new(
                 Line::from(vec![
+                    " [^a] ".blue().bold(),
                     " Add ".into(),
-                    "<CTRL-a> ".blue().bold(),
+                    "[^d]".blue().bold(),
                     " Delete ".into(),
-                    "<CTRL-d>".blue().bold(),
                 ])
-                .right_aligned(),
+                .left_aligned(),
             ),
         };
         frame.render_widget(help, area);

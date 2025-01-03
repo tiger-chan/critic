@@ -233,7 +233,7 @@ impl App {
             let region = Layout::horizontal(Constraint::from_ratios([(7, 8), (1, 8)]));
             let [tab, main] = region.areas(footer_area);
             self.tab.1.render_footer(tab, frame);
-            let help = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]).right_aligned();
+            let help = Line::from(vec![" [q] ".blue().bold(), " Quit".into()]).right_aligned();
             frame.render_widget(help, main);
         }
     }

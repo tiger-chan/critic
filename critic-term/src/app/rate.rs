@@ -174,6 +174,19 @@ impl AppTab for RateWidget {
         );
     }
 
+    fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
+        let help = Paragraph::new(
+            Line::from(vec![
+                " [↑↓←→/WASD]".blue().bold(),
+                " Select".into(),
+                " [Enter/Space]".blue().bold(),
+                " Submit".into(),
+            ])
+            .left_aligned(),
+        );
+        frame.render_widget(help, area);
+    }
+
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         match evt.code {
             KeyCode::Up | KeyCode::Char('w') => {

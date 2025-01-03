@@ -211,9 +211,9 @@ impl AppTab for TitleWidget {
             _ => Paragraph::new(
                 Line::from(vec![
                     " Add ".into(),
-                    "<a> ".blue().bold(),
+                    "<CTRL-a> ".blue().bold(),
                     " Delete ".into(),
-                    "<d>".blue().bold(),
+                    "<CTRL-d>".blue().bold(),
                 ])
                 .right_aligned(),
             ),
@@ -226,7 +226,7 @@ impl AppTab for TitleWidget {
             Mode::Title => {
                 let title_id = self.titles_state.borrow().selected();
                 match (evt.code, evt.modifiers) {
-                    (KeyCode::Char('a'), _) => {
+                    (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                         self.mode = Mode::NewTitle {
                             state: Input::default(),
                         };

@@ -176,16 +176,16 @@ impl AppTab for RateWidget {
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
         match evt.code {
-            KeyCode::Up => {
+            KeyCode::Up | KeyCode::Char('w') => {
                 self.selected = Selected::Skip;
             }
-            KeyCode::Down => {
+            KeyCode::Down | KeyCode::Char('s') => {
                 self.selected = Selected::Equals;
             }
-            KeyCode::Left => {
+            KeyCode::Left | KeyCode::Char('a') => {
                 self.selected = Selected::Left;
             }
-            KeyCode::Right => {
+            KeyCode::Right | KeyCode::Char('d') => {
                 self.selected = Selected::Right;
             }
             KeyCode::Enter | KeyCode::Char(' ') => {

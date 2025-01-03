@@ -79,7 +79,7 @@ impl AppTab for TopWidget {
                 let db = self.db.borrow();
                 let db = &*db;
                 let page = self.page.saturating_sub(1);
-                let rows = top_rows(&db, "", page);
+                let rows = top_rows(&db, &self.criteria, page);
                 if !rows.is_empty() {
                     self.rows = rows;
                     self.page = page;
@@ -90,7 +90,7 @@ impl AppTab for TopWidget {
                 let db = self.db.borrow();
                 let db = &*db;
                 let page = self.page.saturating_add(1);
-                let rows = top_rows(&db, "", page);
+                let rows = top_rows(&db, &self.criteria, page);
                 if !rows.is_empty() {
                     self.rows = rows;
                     self.page = page;

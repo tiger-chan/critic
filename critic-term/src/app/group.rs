@@ -207,9 +207,11 @@ impl AppTab for GroupWidget {
         let help = Paragraph::new(
             Line::from(vec![
                 " Add ".into(),
-                "<a> ".blue().bold(),
+                "<CTRL-a> ".blue().bold(),
+                " Edit ".into(),
+                "<e> ".blue().bold(),
                 " Delete ".into(),
-                "<d>".blue().bold(),
+                "<CTRL-d>".blue().bold(),
             ])
             .right_aligned(),
         );
@@ -220,14 +222,21 @@ impl AppTab for GroupWidget {
         match self.mode {
             Mode::Group => {
                 let group_id = self.group_state.borrow().selected();
-                match evt.code {
-                    KeyCode::Up => {
+                match (evt.code, evt.modifiers) {
+                    (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
+                        let id = {
+                            let idx = self.group_state.borrow().selected().unwrap();
+                            self.groups[idx].id
+                        };
+                        self.mode = Mode::DeleteGroup { id };
+                    }
+                    (KeyCode::Up | KeyCode::Char('w'), _) => {
                         self.group_state.borrow_mut().select_previous();
                     }
-                    KeyCode::Down => {
+                    (KeyCode::Down | KeyCode::Char('s'), _) => {
                         self.group_state.borrow_mut().select_next();
                     }
-                    KeyCode::Right => {
+                    (KeyCode::Right | KeyCode::Char('d'), _) => {
                         if !self.groups.is_empty() {
                             let group_id = {
                                 let idx = self.group_state.borrow().selected().unwrap();
@@ -236,18 +245,11 @@ impl AppTab for GroupWidget {
                             self.mode = Mode::Criteria { group_id };
                         }
                     }
-                    KeyCode::Char('a') => {
+                    (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                         self.input_state = Input::default();
                         self.mode = Mode::NewGroup;
                     }
-                    KeyCode::Char('d') => {
-                        let id = {
-                            let idx = self.group_state.borrow().selected().unwrap();
-                            self.groups[idx].id
-                        };
-                        self.mode = Mode::DeleteGroup { id };
-                    }
-                    KeyCode::Char('e') => {
+                    (KeyCode::Char('e'), _) => {
                         if !self.groups.is_empty() {
                             let (id, value) = {
                                 let idx = self.group_state.borrow().selected().unwrap();
@@ -273,28 +275,28 @@ impl AppTab for GroupWidget {
                     }
                 }
             }
-            Mode::Criteria { group_id } => match evt.code {
-                KeyCode::Up => {
-                    self.criteria_state.borrow_mut().select_previous();
-                }
-                KeyCode::Down => {
-                    self.criteria_state.borrow_mut().select_next();
-                }
-                KeyCode::Left => {
-                    self.mode = Mode::Group;
-                }
-                KeyCode::Char('a') => {
+            Mode::Criteria { group_id } => match (evt.code, evt.modifiers) {
+                (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                     self.input_state = Input::default();
                     self.mode = Mode::NewCriteria { group_id };
                 }
-                KeyCode::Char('d') => {
+                (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
                     let id = {
                         let idx = self.criteria_state.borrow().selected().unwrap();
                         self.criteria[idx].id
                     };
                     self.mode = Mode::DeleteCriteria { group_id, id };
                 }
-                KeyCode::Char('e') => {
+                (KeyCode::Up | KeyCode::Char('w'), _) => {
+                    self.criteria_state.borrow_mut().select_previous();
+                }
+                (KeyCode::Down | KeyCode::Char('s'), _) => {
+                    self.criteria_state.borrow_mut().select_next();
+                }
+                (KeyCode::Left | KeyCode::Char('a'), _) => {
+                    self.mode = Mode::Group;
+                }
+                (KeyCode::Char('e'), _) => {
                     let (id, value) = {
                         let idx = self.criteria_state.borrow().selected().unwrap();
                         (self.criteria[idx].id, self.criteria[idx].name.as_str())

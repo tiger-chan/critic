@@ -10,3 +10,7 @@ critic = { version = "0.1.0", path = "../critic", features = ["rusqlite"] }
 crossterm = "0.28.1"
 ratatui = { version = "0.29.0", features = ["serde"] }
 tui-input = "0.11.1"
+
+[[bin]]
+name = "critic"
+path = "src/main.rs"

@@ -4,8 +4,9 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::Constraint,
     prelude::Rect,
+    style::Stylize,
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Row, Table, TableState},
+    widgets::{Block, Borders, Paragraph, Row, Table, TableState},
     Frame,
 };
 use std::{cell::RefCell, rc::Rc};
@@ -65,6 +66,21 @@ impl AppTab for TopWidget {
 
         let state = &mut *self.state.borrow_mut();
         frame.render_stateful_widget(table, area, state);
+    }
+
+    fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
+        let help = Paragraph::new(
+            Line::from(vec![
+                " [↑↓/WS]".blue().bold(),
+                " Navigate".into(),
+                " [←→/AD]".blue().bold(),
+                " Page".into(),
+                " [Enter/Space]".blue().bold(),
+                " Filter".into(),
+            ])
+            .left_aligned(),
+        );
+        frame.render_widget(help, area);
     }
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {

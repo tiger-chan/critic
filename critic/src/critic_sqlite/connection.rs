@@ -20,7 +20,7 @@ impl DbConnection for Connection {
             .map(|_| conn)?;
 
         let count = conn
-            .query_row("SELECT COUNT(1) FROM entries", params![], |x| {
+            .query_row("SELECT COUNT(1) FROM titles", params![], |x| {
                 let y: i32 = x.get(0)?;
                 Ok(y)
             })

@@ -1,2 +1,2 @@
-SELECT id, name FROM entries
+SELECT id, name FROM titles
 ORDER BY name ASC 

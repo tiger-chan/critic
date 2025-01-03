@@ -1,1 +1,1 @@
-UPDATE entries SET name = ?2 WHERE id = ?1
+UPDATE titles SET name = ?2 WHERE id = ?1

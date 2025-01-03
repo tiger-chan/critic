@@ -1,2 +1,2 @@
-DELETE FROM entry_criteria
-WHERE entry_id = ?1 AND group_id = ?2
+DELETE FROM title_criteria
+WHERE title_id = ?1 AND group_id = ?2

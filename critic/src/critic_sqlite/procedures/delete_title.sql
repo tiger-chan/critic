@@ -1,2 +1,2 @@
-DELETE FROM entries
+DELETE FROM titles
 WHERE id = ?1

@@ -58,11 +58,11 @@ If you'd prefer to clone the repository first:
 
     1. Clone the repository:
     ```bash
-git clone https://github.com/tiger-chan/critic.git
-cd critic
+    git clone https://github.com/tiger-chan/critic.git
+    cd critic
     ```
 
     2. Build and install the project:
     ```bash
-cargo install --path .
+    cargo install --path .
     ```

@@ -25,3 +25,8 @@ pub struct NewCriteriaGroup {
 pub struct DeleteCriteriaGroup {
     pub id: i32,
 }
+
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct GroupAddToTiles {
+    pub id: i32,
+}

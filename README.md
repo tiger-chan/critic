@@ -42,3 +42,27 @@ and assign them to specific groups.
 ## Top Ratings
 This screen allows users to view the current ratings of all titles in the
 database.
+
+## Installation
+You can install critic in one of two ways:
+
+1. Install directly using cargo install from the Git repository:
+Run the following command to install the latest version directly from the repository:
+
+```bash
+cargo install --git https://github.com/tiger-chan/critic.git
+```
+
+2. Clone the repository and install manually:
+If you'd prefer to clone the repository first:
+
+    1. Clone the repository:
+    ```bash
+git clone https://github.com/tiger-chan/critic.git
+cd critic
+    ```
+
+    2. Build and install the project:
+    ```bash
+cargo install --path .
+    ```

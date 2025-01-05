@@ -21,10 +21,13 @@ use title_tab::TitleWidget;
 use top_tab::TopWidget;
 
 pub(super) mod theme {
-    use ratatui::style::{palette::tailwind, Color};
+    use ratatui::style::{palette::tailwind, Color, Modifier, Style};
 
     pub const DEFAULT: Color = tailwind::GRAY.c500;
     pub const HIGHLIGHT: Color = tailwind::WHITE;
+    pub const HINT: Style = Style::new()
+        .fg(tailwind::BLUE.c500)
+        .add_modifier(Modifier::BOLD);
 }
 
 pub(super) fn modal_input_single_line(

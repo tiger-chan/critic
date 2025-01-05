@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 
 use crate::{
-    dto::{DeleteCriteriaGroup, NewCriteriaGroup, UpdateCriteriaGroup},
+    dto::{DeleteCriteriaGroup, GroupAddToTiles, NewCriteriaGroup, UpdateCriteriaGroup},
     DbError, Record,
 };
 
@@ -34,6 +34,14 @@ impl Record<Connection> for DeleteCriteriaGroup {
     fn save(&self, connection: &mut Connection) -> Result<usize, DbError> {
         connection
             .execute(procedures::DELETE_GROUP_CRITERIA, params![self.id])
+            .map_err(DbError::Sqlite)
+    }
+}
+
+impl Record<Connection> for GroupAddToTiles {
+    fn save(&self, connection: &mut Connection) -> Result<usize, DbError> {
+        connection
+            .execute(procedures::ADD_GROUP_TO_ALL, params![self.id])
             .map_err(DbError::Sqlite)
     }
 }

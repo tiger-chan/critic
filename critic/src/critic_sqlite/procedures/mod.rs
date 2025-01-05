@@ -1,6 +1,7 @@
 pub const CREATE: &str = include_str!("create.sql");
 
 pub const ALL_GROUPS: &str = include_str!("all_groups.sql");
+pub const ADD_GROUP_TO_ALL: &str = include_str!("add_group_to_all.sql");
 pub const CREATE_GROUP_CRITERIA: &str = include_str!("create_group_criteria.sql");
 pub const UPDATE_GROUP_CRITERIA: &str = include_str!("update_group_criteria.sql");
 pub const DELETE_GROUP_CRITERIA: &str = include_str!("delete_group_criteria.sql");

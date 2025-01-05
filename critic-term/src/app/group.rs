@@ -1,11 +1,11 @@
 use std::{cell::RefCell, i32, rc::Rc};
 
-use critic::prelude::*;
+use critic::{dto::GroupAddToTiles, prelude::*};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::Stylize,
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
 };
 use tui_input::{backend::crossterm::EventHandler, Input};
@@ -35,6 +35,9 @@ enum Mode {
     },
     DeleteCriteria {
         group_id: i32,
+        id: i32,
+    },
+    PushGroup {
         id: i32,
     },
 }
@@ -173,7 +176,11 @@ impl AppTab for GroupWidget {
 
                 let text = vec![
                     Line::from("Are your sure you want to delete the group?").centered(),
-                    Line::from(vec!["[Y]es".blue().bold(), "[N]o".blue().bold()]).centered(),
+                    Line::from(vec![
+                        Span::styled("[Y]es", theme::HINT),
+                        Span::styled("[N]o", theme::HINT),
+                    ])
+                    .centered(),
                 ];
 
                 frame.render_widget(
@@ -187,7 +194,11 @@ impl AppTab for GroupWidget {
                 frame.render_widget(Clear::default(), area);
                 let text = vec![
                     Line::from("Are your sure you want to delete the group?").centered(),
-                    Line::from(vec!["[Y]es".blue().bold(), "[N]o".blue().bold()]).centered(),
+                    Line::from(vec![
+                        Span::styled("[Y]es", theme::HINT),
+                        Span::styled("[N]o", theme::HINT),
+                    ])
+                    .centered(),
                 ];
 
                 frame.render_widget(
@@ -199,6 +210,28 @@ impl AppTab for GroupWidget {
                     area,
                 );
             }
+            Mode::PushGroup { id: _ } => {
+                let area = popup_area(area, 50, 50);
+                frame.render_widget(Clear::default(), area);
+                let text = vec![
+                    Line::from("Are your sure you want to push the group to all titles?")
+                        .centered(),
+                    Line::from(vec![
+                        Span::styled("[Y]es", theme::HINT),
+                        Span::styled("[N]o", theme::HINT),
+                    ])
+                    .centered(),
+                ];
+
+                frame.render_widget(
+                    Paragraph::new(text).block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title("Add Group to All Titles"),
+                    ),
+                    area,
+                );
+            }
             _ => {}
         }
     }
@@ -206,11 +239,13 @@ impl AppTab for GroupWidget {
     fn render_footer(&self, area: Rect, frame: &mut ratatui::Frame) {
         let help = Paragraph::new(
             Line::from(vec![
-                " [^a]".blue().bold(),
+                Span::styled(" [^a]", theme::HINT),
                 " Add".into(),
-                " [e]".blue().bold(),
+                Span::styled(" [e]", theme::HINT),
                 " Edit".into(),
-                " [^d]".blue().bold(),
+                Span::styled(" [^p]", theme::HINT),
+                " Push".into(),
+                Span::styled(" [^d]", theme::HINT),
                 " Delete ".into(),
             ])
             .left_aligned(),
@@ -248,6 +283,15 @@ impl AppTab for GroupWidget {
                     (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                         self.input_state = Input::default();
                         self.mode = Mode::NewGroup;
+                    }
+                    (KeyCode::Char('p'), KeyModifiers::CONTROL) => {
+                        if !self.groups.is_empty() {
+                            let id = {
+                                let idx = self.group_state.borrow().selected().unwrap();
+                                self.groups[idx].id
+                            };
+                            self.mode = Mode::PushGroup { id };
+                        }
                     }
                     (KeyCode::Char('e'), _) => {
                         if !self.groups.is_empty() {
@@ -457,6 +501,20 @@ impl AppTab for GroupWidget {
                         }
                         self.mode = Mode::Criteria { group_id };
                     }
+                }
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.mode = Mode::Group;
+                }
+                _ => {}
+            },
+            Mode::PushGroup { id } => match evt.code {
+                KeyCode::Char('y') => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    let request = GroupAddToTiles { id };
+                    conn.save(&request)?;
+                    self.mode = Mode::Group;
                 }
                 KeyCode::Esc | KeyCode::Char('n') => {
                     self.mode = Mode::Group;

@@ -41,6 +41,7 @@ pub trait CriticData {
     fn criteria(&self, id: i32) -> Result<Vec<dto::CriteriaGroupItem>, DbError>;
     fn all_titles(&self) -> Result<Vec<dto::Title>, DbError>;
     fn groups_by_title(&self, title_id: i32) -> Result<Vec<dto::CriteriaGroup>, DbError>;
+    fn titles_in_group(&self, id: i32) -> Result<Vec<dto::Title>, DbError>;
 }
 
 pub mod prelude {

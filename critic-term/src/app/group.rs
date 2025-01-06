@@ -1,6 +1,9 @@
 use std::{cell::RefCell, i32, rc::Rc};
 
-use critic::{dto::GroupAddToTiles, prelude::*};
+use critic::{
+    dto::{GroupAddToTiles, NewTitleCriteria},
+    prelude::*,
+};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -12,7 +15,7 @@ use tui_input::{backend::crossterm::EventHandler, Input};
 
 use super::{modal_input_single_line, popup_area, theme, AppTab};
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Clone)]
 enum Mode {
     #[default]
     Group,
@@ -37,8 +40,15 @@ enum Mode {
         group_id: i32,
         id: i32,
     },
-    PushGroup {
+    PushGroupToAll {
         id: i32,
+    },
+    EditGroupsForTitles {
+        id: i32,
+        curr: Vec<bool>,
+        edit: Vec<bool>,
+        titles: Vec<Title>,
+        state: RefCell<ListState>,
     },
 }
 
@@ -157,7 +167,7 @@ impl AppTab for GroupWidget {
         frame.render_stateful_widget(criteria, areas[1], &mut criteria_state);
         *self.criteria_state.borrow_mut() = criteria_state;
 
-        match self.mode {
+        match &self.mode {
             Mode::NewGroup => {
                 modal_input_single_line("New Group", area, &self.input_state, frame);
             }
@@ -210,7 +220,7 @@ impl AppTab for GroupWidget {
                     area,
                 );
             }
-            Mode::PushGroup { id: _ } => {
+            Mode::PushGroupToAll { id: _ } => {
                 let area = popup_area(area, 50, 50);
                 frame.render_widget(Clear::default(), area);
                 let text = vec![
@@ -232,6 +242,41 @@ impl AppTab for GroupWidget {
                     area,
                 );
             }
+            Mode::EditGroupsForTitles {
+                edit,
+                titles,
+                state,
+                ..
+            } => {
+                let area = popup_area(area, 50, 80);
+                frame.render_widget(Clear::default(), area);
+
+                let list_items: Vec<ListItem> = titles
+                    .iter()
+                    .zip(edit)
+                    .map(|(x, y)| {
+                        ListItem::new(if *y {
+                            format!("[x] {}", x.name)
+                        } else {
+                            format!("[ ] {}", x.name)
+                        })
+                    })
+                    .collect();
+
+                let block = Block::default()
+                    .borders(Borders::ALL)
+                    .fg(theme::HIGHLIGHT)
+                    .title("Groups");
+
+                let list = List::new(list_items)
+                    .block(block)
+                    .fg(theme::DEFAULT)
+                    .highlight_style(theme::HIGHLIGHT);
+
+                let mut tmp_state: ListState = state.borrow().clone();
+                frame.render_stateful_widget(list, area, &mut tmp_state);
+                *state.borrow_mut() = tmp_state;
+            }
             _ => {}
         }
     }
@@ -243,6 +288,8 @@ impl AppTab for GroupWidget {
                 " Add".into(),
                 Span::styled(" [e]", theme::HINT),
                 " Edit".into(),
+                Span::styled(" [^e]", theme::HINT),
+                " Edit Titles".into(),
                 Span::styled(" [^p]", theme::HINT),
                 " Push".into(),
                 Span::styled(" [^d]", theme::HINT),
@@ -254,7 +301,7 @@ impl AppTab for GroupWidget {
     }
 
     fn handle_key_events(&mut self, evt: &KeyEvent) -> Result<bool, Box<dyn std::error::Error>> {
-        match self.mode {
+        match &mut self.mode {
             Mode::Group => {
                 let group_id = self.group_state.borrow().selected();
                 match (evt.code, evt.modifiers) {
@@ -290,7 +337,41 @@ impl AppTab for GroupWidget {
                                 let idx = self.group_state.borrow().selected().unwrap();
                                 self.groups[idx].id
                             };
-                            self.mode = Mode::PushGroup { id };
+                            self.mode = Mode::PushGroupToAll { id };
+                        }
+                    }
+                    (KeyCode::Char('e'), KeyModifiers::CONTROL) => {
+                        if !self.groups.is_empty() {
+                            let id = {
+                                let idx = self.group_state.borrow().selected().unwrap();
+                                self.groups[idx].id
+                            };
+                            let mut db = self.db.borrow_mut();
+                            let conn = &mut *db;
+
+                            let titles = conn
+                                .all_titles()
+                                .expect("Only invalid if the connection is bad");
+
+                            let titles_in_group = conn
+                                .titles_in_group(id)
+                                .expect("Only invalid if the connection is bad");
+
+                            let curr = titles
+                                .iter()
+                                .map(|x| titles_in_group.contains(x))
+                                .collect::<Vec<bool>>();
+
+                            let mut state = ListState::default();
+                            state.select_first();
+
+                            self.mode = Mode::EditGroupsForTitles {
+                                id,
+                                edit: curr.clone(),
+                                curr,
+                                titles,
+                                state: RefCell::new(state),
+                            }
                         }
                     }
                     (KeyCode::Char('e'), _) => {
@@ -322,14 +403,19 @@ impl AppTab for GroupWidget {
             Mode::Criteria { group_id } => match (evt.code, evt.modifiers) {
                 (KeyCode::Char('a'), KeyModifiers::CONTROL) => {
                     self.input_state = Input::default();
-                    self.mode = Mode::NewCriteria { group_id };
+                    self.mode = Mode::NewCriteria {
+                        group_id: *group_id,
+                    };
                 }
                 (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
                     let id = {
                         let idx = self.criteria_state.borrow().selected().unwrap();
                         self.criteria[idx].id
                     };
-                    self.mode = Mode::DeleteCriteria { group_id, id };
+                    self.mode = Mode::DeleteCriteria {
+                        group_id: *group_id,
+                        id,
+                    };
                 }
                 (KeyCode::Up | KeyCode::Char('w'), _) => {
                     self.criteria_state.borrow_mut().select_previous();
@@ -347,7 +433,10 @@ impl AppTab for GroupWidget {
                             (self.criteria[idx].id, self.criteria[idx].name.as_str())
                         };
 
-                        self.mode = Mode::EditCriteria { group_id, id };
+                        self.mode = Mode::EditCriteria {
+                            group_id: *group_id,
+                            id,
+                        };
                         self.input_state = Input::new(value.to_string());
                     }
                 }
@@ -364,15 +453,15 @@ impl AppTab for GroupWidget {
                     let name = self.input_state.value();
 
                     let request = UpdateCriteriaGroup {
-                        id,
+                        id: *id,
                         name: name.to_string(),
                     };
 
                     conn.save(&request)?;
 
                     self.groups = all_groups(&conn);
-                    self.criteria = criteria(&conn, id);
-                    let idx = self.groups.iter().position(|x| x.id == id);
+                    self.criteria = criteria(&conn, *id);
+                    let idx = self.groups.iter().position(|x| &x.id == id);
                     *self.group_state.borrow_mut().selected_mut() = idx;
                     self.mode = Mode::Group;
                 }
@@ -383,7 +472,9 @@ impl AppTab for GroupWidget {
             },
             Mode::EditCriteria { group_id, id } => match (evt.code, evt.modifiers) {
                 (KeyCode::Esc, _) => {
-                    self.mode = Mode::Criteria { group_id };
+                    self.mode = Mode::Criteria {
+                        group_id: *group_id,
+                    };
                 }
                 (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
                     let mut db = self.db.borrow_mut();
@@ -391,16 +482,18 @@ impl AppTab for GroupWidget {
 
                     let name = self.input_state.value();
                     let request = UpdateCriterion {
-                        id,
+                        id: *id,
                         name: name.to_string(),
                     };
 
                     conn.save(&request)?;
 
-                    self.criteria = criteria(&conn, group_id);
-                    let idx = self.criteria.iter().position(|x| x.id == id);
+                    self.criteria = criteria(&conn, *group_id);
+                    let idx = self.criteria.iter().position(|x| &x.id == id);
                     *self.criteria_state.borrow_mut().selected_mut() = idx;
-                    self.mode = Mode::Criteria { group_id };
+                    self.mode = Mode::Criteria {
+                        group_id: *group_id,
+                    };
                 }
                 _ => {
                     self.input_state.handle_event(&Event::Key(*evt));
@@ -436,7 +529,9 @@ impl AppTab for GroupWidget {
             },
             Mode::NewCriteria { group_id } => match (evt.code, evt.modifiers) {
                 (KeyCode::Esc, _) => {
-                    self.mode = Mode::Criteria { group_id };
+                    self.mode = Mode::Criteria {
+                        group_id: *group_id,
+                    };
                 }
                 (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
                     let mut db = self.db.borrow_mut();
@@ -444,12 +539,12 @@ impl AppTab for GroupWidget {
 
                     let name = self.input_state.value();
                     let request = NewCriterion {
-                        group: group_id,
+                        group: *group_id,
                         name: name.to_string(),
                     };
 
                     if let Ok(_) = conn.save(&request) {
-                        self.criteria = criteria(&conn, group_id);
+                        self.criteria = criteria(&conn, *group_id);
                         let idx = self.criteria.iter().position(|x| x.name == name);
                         *self.criteria_state.borrow_mut().selected_mut() = idx;
                         self.mode = Mode::Group;
@@ -465,7 +560,7 @@ impl AppTab for GroupWidget {
                     let mut db = self.db.borrow_mut();
                     let conn = &mut *db;
 
-                    let request = DeleteCriteriaGroup { id };
+                    let request = DeleteCriteriaGroup { id: *id };
 
                     let idx = self.group_state.borrow().selected().unwrap();
                     conn.save(&request)?;
@@ -493,15 +588,17 @@ impl AppTab for GroupWidget {
                     let mut db = self.db.borrow_mut();
                     let conn = &mut *db;
 
-                    let request = DeleteCriterion { id };
+                    let request = DeleteCriterion { id: *id };
 
                     let idx = self.criteria_state.borrow().selected().unwrap();
                     if let Ok(_) = conn.save(&request) {
-                        self.criteria = criteria(&conn, group_id);
+                        self.criteria = criteria(&conn, *group_id);
                         if idx >= self.criteria.len() {
                             self.criteria_state.borrow_mut().select_last();
                         }
-                        self.mode = Mode::Criteria { group_id };
+                        self.mode = Mode::Criteria {
+                            group_id: *group_id,
+                        };
                     }
                 }
                 KeyCode::Esc | KeyCode::Char('n') => {
@@ -509,17 +606,77 @@ impl AppTab for GroupWidget {
                 }
                 _ => {}
             },
-            Mode::PushGroup { id } => match evt.code {
+            Mode::PushGroupToAll { id } => match evt.code {
                 KeyCode::Char('y') => {
                     let mut db = self.db.borrow_mut();
                     let conn = &mut *db;
 
-                    let request = GroupAddToTiles { id };
+                    let request = GroupAddToTiles { id: *id };
                     conn.save(&request)?;
                     self.mode = Mode::Group;
                 }
                 KeyCode::Esc | KeyCode::Char('n') => {
                     self.mode = Mode::Group;
+                }
+                _ => {}
+            },
+            Mode::EditGroupsForTitles {
+                id,
+                state,
+                curr,
+                edit,
+                titles,
+                ..
+            } => match (evt.code, evt.modifiers) {
+                (KeyCode::Esc, _) => {
+                    self.mode = Mode::Group;
+                }
+                (KeyCode::Enter | KeyCode::Char(' '), _) => {
+                    if let Some(idx) = state.borrow_mut().selected() {
+                        edit[idx] = !edit[idx];
+                    }
+                }
+                (KeyCode::Char('s'), KeyModifiers::CONTROL) => {
+                    let mut db = self.db.borrow_mut();
+                    let conn = &mut *db;
+
+                    for (y, t) in curr
+                        .iter()
+                        .zip(edit)
+                        .zip(titles)
+                        .filter(|((x, y), _)| x != y)
+                        .map(|((_, y), t)| (*y, t))
+                    {
+                        if y {
+                            let req = NewTitleCriteria {
+                                criteria: *id,
+                                title: t.id,
+                            };
+
+                            conn.save(&req)?;
+                        } else {
+                            let req = DeleteTitleCriteria {
+                                criteria: *id,
+                                title: t.id,
+                            };
+
+                            conn.save(&req)?;
+                        }
+                    }
+
+                    self.mode = Mode::Group;
+                }
+                (KeyCode::Up | KeyCode::Char('w'), _) => {
+                    state.borrow_mut().select_previous();
+                }
+                (KeyCode::Down | KeyCode::Char('s'), _) => {
+                    state.borrow_mut().select_next();
+                }
+                (KeyCode::PageUp, _) => {
+                    state.borrow_mut().scroll_up_by(10);
+                }
+                (KeyCode::PageDown, _) => {
+                    state.borrow_mut().scroll_down_by(10);
                 }
                 _ => {}
             },

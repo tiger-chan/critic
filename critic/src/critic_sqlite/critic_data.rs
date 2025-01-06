@@ -170,4 +170,26 @@ impl CriticData for Connection {
 
         Ok(results)
     }
+
+    fn titles_in_group(&self, id: i32) -> Result<Vec<dto::Title>, DbError> {
+        let mut stmt = self
+            .prepare(procedures::FIND_TITLES_BY_GROUP)
+            .expect("Failed to prepare statement");
+
+        let row_iter = stmt
+            .query_map(params![id], |r| {
+                Ok(dto::Title {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .map_err(DbError::Sqlite)?;
+
+        let mut results = Vec::new();
+        for row in row_iter {
+            results.push(row.unwrap());
+        }
+
+        Ok(results)
+    }
 }

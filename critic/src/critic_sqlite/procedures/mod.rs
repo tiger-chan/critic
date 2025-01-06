@@ -6,6 +6,7 @@ pub const CREATE_GROUP_CRITERIA: &str = include_str!("create_group_criteria.sql"
 pub const UPDATE_GROUP_CRITERIA: &str = include_str!("update_group_criteria.sql");
 pub const DELETE_GROUP_CRITERIA: &str = include_str!("delete_group_criteria.sql");
 pub const FIND_GROUPS_BY_TITLE: &str = include_str!("find_groups_by_title.sql");
+pub const FIND_TITLES_BY_GROUP: &str = include_str!("find_titles_by_group.sql");
 
 pub const CREATE_CRITERION: &str = include_str!("create_criterion.sql");
 pub const UPDATE_CRITERION: &str = include_str!("update_criterion.sql");

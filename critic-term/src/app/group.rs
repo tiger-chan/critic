@@ -341,13 +341,15 @@ impl AppTab for GroupWidget {
                     self.mode = Mode::Group;
                 }
                 (KeyCode::Char('e'), _) => {
-                    let (id, value) = {
-                        let idx = self.criteria_state.borrow().selected().unwrap();
-                        (self.criteria[idx].id, self.criteria[idx].name.as_str())
-                    };
+                    if !self.criteria.is_empty() {
+                        let (id, value) = {
+                            let idx = self.criteria_state.borrow().selected().unwrap();
+                            (self.criteria[idx].id, self.criteria[idx].name.as_str())
+                        };
 
-                    self.mode = Mode::EditCriteria { group_id, id };
-                    self.input_state = Input::new(value.to_string());
+                        self.mode = Mode::EditCriteria { group_id, id };
+                        self.input_state = Input::new(value.to_string());
+                    }
                 }
                 _ => {}
             },
